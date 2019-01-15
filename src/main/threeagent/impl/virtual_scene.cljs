@@ -1,5 +1,5 @@
-(ns threeagent.virtual-scene
-  (:require [threeagent.util :refer [$ $! log]]
+(ns threeagent.impl.virtual-scene
+  (:require [threeagent.impl.util :refer [$ $! log]]
             [medley.core :as medley]
             [reagent.ratom :as ratom])
   (:import [goog.structs PriorityQueue]))

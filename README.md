@@ -2,7 +2,7 @@
 ClojureScript library for building Three.js apps in a reagent-like fashion
 
 ## Installation
- `TODO`
+
  
 ## Getting Started
 `TODO`
@@ -10,7 +10,7 @@ ClojureScript library for building Three.js apps in a reagent-like fashion
 ## Example
 ```clojure
 (ns my-app.core
-  (:require [threeagent.core :as th]))
+  (:require [threeagent.alpha.core :as th]))
   
 ;; Use reactive atom for storing state
 (defonce state (th/atom {:ticks 0}))

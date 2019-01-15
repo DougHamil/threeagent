@@ -1,4 +1,4 @@
-(ns threeagent.util)
+(ns threeagent.impl.util)
 
 (defn $ [o k] (when o (aget o k)))
 (defn $! [o k v] (when o (aset o k v)))

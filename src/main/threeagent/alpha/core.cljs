@@ -1,6 +1,6 @@
-(ns threeagent.core
+(ns threeagent.alpha.core
   (:refer-clojure :exclude [atom])
-  (:require [threeagent.scene :as scene]
+  (:require [threeagent.impl.scene :as scene]
             [reagent.core :as r]))
 
 (defn atom [d] (r/atom d))

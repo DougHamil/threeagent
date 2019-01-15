@@ -1,8 +1,8 @@
-(ns threeagent.scene
-  (:require [threeagent.virtual-scene :as vscene]
-            [threeagent.util :refer [$ $! log]]
-            [threeagent.threejs :as threejs]
-            [threeagent.component :refer [render-component]]
+(ns threeagent.impl.scene
+  (:require [threeagent.impl.virtual-scene :as vscene]
+            [threeagent.impl.util :refer [$ $! log]]
+            [threeagent.impl.threejs :as threejs]
+            [threeagent.impl.component :refer [render-component]]
             [cljs.core :refer [exists?]]))
 
 (defn- create-object [node-data]

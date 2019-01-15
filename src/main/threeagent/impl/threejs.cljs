@@ -1,5 +1,5 @@
-(ns threeagent.threejs
-  (:require [threeagent.util :refer [$ $!]]))
+(ns threeagent.impl.threejs
+  (:require [threeagent.impl.util :refer [$ $!]]))
 
 (defn perspective-camera [fov aspect near far]
   (new js/THREE.PerspectiveCamera fov aspect near far))

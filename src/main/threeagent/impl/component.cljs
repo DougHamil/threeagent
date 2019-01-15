@@ -1,6 +1,6 @@
-(ns threeagent.component
-  (:require [threeagent.threejs :as threejs])
-  (:require-macros [threeagent.component-macros :refer [defrenderer]]))
+(ns threeagent.impl.component
+  (:require [threeagent.impl.threejs :as threejs])
+  (:require-macros [threeagent.impl.component-macros :refer [defrenderer]]))
 
 (def ^:private ^:dynamic component-registry {})
 

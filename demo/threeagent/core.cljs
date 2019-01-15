@@ -1,6 +1,7 @@
 (ns threeagent.demo.core
-  (:require [threeagent.core :as th]
+  (:require [threeagent.alpha.core :as th]
             [THREE]))
+
 
 (enable-console-print!)
 
@@ -62,7 +63,7 @@
               :material {:color "white"}
               :size 1.5}])]])
 
-(defonce scene (th/render [root]
+(defonce scene (th/render root
                           (.-body js/document)
                           {:on-before-render on-before-render}))
 
