@@ -2,7 +2,7 @@
 ClojureScript library for building Three.js apps in a reagent-like fashion
 
 ## Installation
-[![Clojars Project](https://img.shields.io/clojars/v/doughamil/threeagent.svg)](https://clojars.org/doughamil/threeagent)
+[![Clojars Project](https://clojars.org/doughamil/threeagent/latest-version.svg)](https://clojars.org/doughamil/threeagent)
 
 `TODO: Add THREE.js instructions`
  
