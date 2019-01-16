@@ -26,7 +26,7 @@ ClojureScript library for building Three.js apps in a reagent-like fashion
 ;; Form-2 component example
 (defn growing-sphere []
   (let [s (atom 0)]
-    (.setInterval js/window #(swap! atom inc) 5000)
+    (.setInterval js/window #(swap! s inc) 5000)
     (fn []
       [:sphere {:radius @s}])))
 

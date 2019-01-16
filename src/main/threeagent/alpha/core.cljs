@@ -1,10 +1,10 @@
 (ns threeagent.alpha.core
   (:refer-clojure :exclude [atom])
   (:require [threeagent.impl.scene :as scene]
-            [reagent.core :as r]))
+            [reagent.ratom :as ratom]))
 
-(defn atom [d] (r/atom d))
-(defn cursor [a p] (r/cursor a p))
+(defn atom [d] (ratom/atom d))
+(defn cursor [a p] (ratom/cursor a p))
 (defn reload-scene
   ([scene root-fn] (reload-scene scene root-fn {}))
   ([scene root-fn opts] (scene/reset-scene! scene root-fn opts)))
