@@ -7,6 +7,7 @@
 
 (defonce state (th/atom {:rotation 0
                          :time 0
+                         :color-1 "red"
                          :font nil}))
 
 (defn on-before-render []
@@ -14,9 +15,8 @@
   (swap! state update :time #(+ 1 %)))
 
 (defn box [color]
-  [:sphere {:dims [1 1 1]
-            :radius 0.5
-            :material {:color color}}])
+  [:box {:dims [1 1 1]
+         :material {:color color}}])
 
 (defn counter []
   (let [c (atom 0)]
@@ -45,7 +45,8 @@
                   :color 0xFFFFFF
                   :intensity 2.0}]
    [:object {:position [0 2 -10]}
-     [counter]]
+    [box @(th/cursor state [:color-1])]
+    [counter]]
    [:object {:rotation [0 (:rotation @state) 0]
              :position [0 0 -10]}
     [:object {:position [2.25 0 0]}
@@ -67,8 +68,6 @@
                           (.-body js/document)
                           {:on-before-render on-before-render}))
 
-(def ^:dynamic *test* 1)
-
 (defn on-js-reload []
   (th/reload-scene scene [root] {:on-before-render on-before-render}))
 
@@ -76,4 +75,5 @@
   (.load loader "fonts/helvetiker_bold.typeface.json" #(do
                                                          (println "Font loaded")
                                                          (swap! state assoc :font %))))
-(.log js/console scene)
+(comment
+  (swap! state assoc :color-1 "blue"))

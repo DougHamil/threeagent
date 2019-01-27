@@ -4,8 +4,11 @@
 (defn perspective-camera [fov aspect near far]
   (new js/THREE.PerspectiveCamera fov aspect near far))
 
-(defn point-light [c, i, d]
+(defn point-light [c i d]
   (new js/THREE.PointLight c i d))
+
+(defn directional-light [c i]
+  (new js/THREE.DirectionalLight c i))
 
 (defn hemisphere-light [sky-color ground-color intensity]
   (new js/THREE.HemisphereLight sky-color ground-color intensity))

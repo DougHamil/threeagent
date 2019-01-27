@@ -14,21 +14,22 @@
             [lein-figwheel "0.5.18"]]
 
   :profiles {:dev {:dependencies [[org.clojure/clojurescript "1.10.439"]
+                                  [cider/cider-nrepl "0.20.1-SNAPSHOT"]
+                                  [cider/piggieback "0.3.10"]
                                   [figwheel "0.5.18"]
                                   [doo "0.1.11"]
                                   [karma-reporter "3.1.0"]]
                    :resource-paths ["target/cljsbuild/demo"]
                    :source-paths ["src/test"]}}
 
+  :npm {:dependencies [[three "0.100.0"]]}
+
   :doo {:karma {}}
 
   :figwheel {:http-server-root "public"
-             :validate-config false
              :nrepl-port 7888
-             :nrepl-middleware ["cider.nrepl/cider-middleware"
-                                "cemerick.piggieback/wrap-cljs-repl"]}
+             :nrepl-middleware [cider.nrepl/cider-middleware]}
 
-             
   :cljsbuild
   {:builds [{:id "test"
              :source-paths [ "src/test"]

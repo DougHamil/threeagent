@@ -54,6 +54,9 @@
 (defrenderer :hemisphere-light [{:keys [sky-color ground-color intensity]}]
   (threejs/hemisphere-light sky-color ground-color intensity))
 
+(defrenderer :directional-light [{:keys [color intensity]}]
+  (threejs/directional-light color intensity))
+
 ;; Text
 (defrenderer :text [{:keys [text material] :as cfg}]
   (let [geo (threejs/text-geometry text cfg)]
