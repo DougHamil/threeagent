@@ -32,7 +32,7 @@
     node
     (recur (.get ($ node "children") (first path)) (rest path))))
 
-(defn get-key [key meta] (or (:key meta)) key)
+(defn get-key [key meta] (:key meta key))
       
 (deftype Node [parent depth key meta data dirty render reaction children]
   Object
