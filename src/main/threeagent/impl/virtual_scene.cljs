@@ -1,7 +1,8 @@
 (ns threeagent.impl.virtual-scene
   (:require [threeagent.impl.util :refer [$ $! log]]
             [medley.core :as medley]
-            [reagent.ratom :as ratom])
+            [reagent.ratom :as ratom]
+            [reagent.core :as reagent])
   (:import [goog.structs PriorityQueue]))
 
 (defonce ^:private non-component-keys #{:position :rotation :scale})
@@ -204,7 +205,7 @@
     (update-node! scene node form changelog)))
 
 (defn render! [scene changelog]
-  (ratom/flush!)
+  (reagent/flush)
   (let [queue ($ scene "render_queue")]
     (loop [node (.dequeue queue)]
       (when node

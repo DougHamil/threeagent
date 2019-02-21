@@ -120,21 +120,40 @@
     (when stats
       (.end stats))))
 
+(defn- get-canvas [dom-root]
+  (if (= "canvas" (clojure.string/lower-case (.-tagName dom-root)))
+    dom-root
+    (let [c (.createElement js/document "canvas")]
+      (.appendChild dom-root c))))
 
-(defn- create-context [root-fn dom-root on-before-render-cb]
-  (let [virtual-scene (vscene/create root-fn)
-        renderer (new js/THREE.WebGLRenderer)
-        camera (new js/THREE.PerspectiveCamera 75 (/ js/window.innerWidth js/window.innerHeight) 0.1 1000)
+(defn- create-camera [width height ortho?]
+  (if ortho?
+    (js/THREE.OrthographicCamera. (/ width -2.0)
+                                  (/ width 2.0)
+                                  (/ height 2.0)
+                                  (/ height -2.0)
+                                  0.1
+                                  1000)
+    (js/THREE.PerspectiveCamera. 75 (/ width height) 0.1 1000)))
+         
+
+(defn- create-context [root-fn dom-root on-before-render-cb ortho-camera? renderer-opts]
+  (let [canvas (get-canvas dom-root)
+        width (.-offsetWidth canvas)
+        height (.-offsetHeight canvas)
+        virtual-scene (vscene/create root-fn)
+        renderer (new js/THREE.WebGLRenderer (clj->js (merge renderer-opts
+                                                             {:canvas canvas})))
+        camera (create-camera width height ortho-camera?)
         scene-root (new js/THREE.Scene)
         composer (when (exists? js/POSTPROCESSING)
                    (new js/POSTPROCESSING.EffectComposer renderer))
         render-pass (when (exists? js/POSTPROCESSING)
                       (new js/POSTPROCESSING.RenderPass scene-root camera))]
-      (.setSize renderer js/window.innerWidth js/window.innerHeight)
+      (.setSize renderer width height)
       (when composer
         ($! render-pass "renderToScreen" true)
         (.addPass composer render-pass))
-      (.appendChild dom-root (.-domElement renderer))
       (let [context (clj->js {:scene-root scene-root
                               :camera camera
                               :before-render-cb on-before-render-cb
@@ -166,8 +185,9 @@
     ($! scene "before-render-cb" on-before-render)
     scene))
 
-(defn render [root-fn dom-root {:keys [on-before-render]}]
-  (let [context (create-context root-fn dom-root on-before-render)
+(defn render [root-fn dom-root {:keys [on-before-render ortho-camera?
+                                       renderer-opts]}]
+  (let [context (create-context root-fn dom-root on-before-render ortho-camera? renderer-opts)
         renderer ($ context "renderer")]
     (.setAnimationLoop renderer ($ context "animate-fn"))
     context))
