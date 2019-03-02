@@ -19,15 +19,20 @@
     ($! context "camera" obj)))
 
 (defn- add-node [context parent-object node]
-  (let [node-data ($ node "data")
-        comp-config (:component-config node-data)
-        obj (create-object node-data)]
-    (set-node-object context node node-data obj)
-    (.add parent-object obj)
-    (.for-each-child node (partial add-node context obj))
-    (when-let [callback (:on-added ($ node "meta"))]
-      (callback obj))
-    obj))
+  (try
+    (let [node-data ($ node "data")
+          comp-config (:component-config node-data)
+          obj (create-object node-data)]
+      (set-node-object context node node-data obj)
+      (.add parent-object obj)
+      (.for-each-child node (partial add-node context obj))
+      (when-let [callback (:on-added ($ node "meta"))]
+        (callback obj))
+      obj)
+    (catch :default e
+      (log "Failed to add node")
+      (log e)
+      (println node))))
 
 (defn- remove-node! [node]
   (let [obj ($ node "threejs")
@@ -59,19 +64,27 @@
         this (:this diff)]
     (if this
       ;; Fully reconstruct scene object
-      (let [[o n] this
-            parent-obj ($ old-obj "parent")
-            children ($ old-obj "children")
-            new-obj (create-object new-data)]
-        (when-let [callback (:on-removed metadata)]
-          (callback old-obj))
-        (set-node-object context node new-data new-obj)
-        (.remove parent-obj old-obj)
-        (.add parent-obj new-obj)
-        (doseq [child children]
-          (.add new-obj child))
-        (when-let [callback (:on-added metadata)]
-          (callback new-obj)))
+      (try
+        (let [[o n] this
+              parent-obj ($ old-obj "parent")
+              children ($ old-obj "children")
+              new-obj (create-object new-data)]
+          (when-let [callback (:on-removed metadata)]
+            (callback old-obj))
+          (set-node-object context node new-data new-obj)
+          (.remove parent-obj old-obj)
+          (.add parent-obj new-obj)
+          (doseq [child children]
+            (.add new-obj child))
+          (when-let [callback (:on-added metadata)]
+            (callback new-obj)))
+        (catch :default ex
+          (log "Failed to update node due to error")
+          (log ex)
+          (println node)
+          (println new-data)
+          (println old-data)
+          (log node)))
       ;; Update transformations
       (do
         (when (:position diff) (threejs/set-position! old-obj (:position diff)))

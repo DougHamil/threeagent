@@ -24,10 +24,10 @@
 
   :npm {:dependencies [[three "0.100.0"]]}
 
-  :doo {:karma {}}
+  :doo {:test "test"}
 
   :figwheel {:http-server-root "public"
-             :nrepl-port 7888
+             :nrepl-port 7889
              :nrepl-middleware [cider.nrepl/cider-middleware]}
 
   :cljsbuild

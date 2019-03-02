@@ -14,9 +14,9 @@
    (let [is-reactive (some? ($ node "reaction"))]
     (println p "|-"
               ($ node "key")
+              (str "comp:" (:component-key ($ node "data")))
               (str "dirty:" ($ node "dirty"))
-              (str "reactive:" is-reactive)
-              ($ node "render"))
+              (str "reactive:" is-reactive))
     (doseq [child (es6-iterator-seq (.values ($ node "children")))]
       (print-tree child (str p "\t"))))))
 
@@ -119,13 +119,15 @@
       ($! node "reaction" reaction))
     node))
 
-(defmulti ->node-shallow (fn [key [l & r]]
-                          (cond
-                            (fn? l) :fn
-                            (keyword? l) :keyword
-                            (sequential? l) :seq
-                            (and (nil? l) (nil? r)) :empty-list
-                            :else nil)))
+(defn- form->form-type [[l & r]]
+  (cond
+    (fn? l) :fn
+    (keyword? l) :keyword
+    (sequential? l) :seq
+    (and (nil? l) (nil? r)) :empty-list
+    :else nil))
+
+(defmulti ->node-shallow (fn [key f] (form->form-type f)))
 
 (defmethod ->node-shallow :empty-list [key form])
 
@@ -168,37 +170,44 @@
 (defn- update-node! [scene node new-form changelog]
   ($! node "dirty" false)
   (let [render-fn ($ node "render")
-        rendered-form (if render-fn
+        new-type (form->form-type new-form)
+        rendered-form (if (and render-fn (= :fn new-type))
                         (apply render-fn (rest new-form))
                         new-form)
         old-form ($ node "rendered-form")]
     (when (not= rendered-form old-form)
-      (let [key ($ node "key")
-            children ($ node "children")
-            old-data ($ node "data")
-            shallow-node (->node-shallow key rendered-form)
-            new-data (:data shallow-node)
-            current-keys (set (es6-iterator-seq (.keys children)))
-            new-keys (set (map first (:children-keys shallow-node)))
-            dropped-keys (clojure.set/difference current-keys new-keys)]
-        ($! node "data" new-data)
-        (when render-fn
-          ($! node "form" (into [render-fn] (rest new-form))))
-        ($! node "rendered-form" new-form)
-        (.push changelog [node :update old-data new-data])
-        ;; Remove children that no longer exist
-        (doseq [child-key dropped-keys]
-          (let [child-node (.get children child-key)]
-            (remove-node! child-node changelog))
-          (.delete children child-key))
-        ;; Update existing children and add new children
-        (doseq [[child-key child-form] (:children-keys shallow-node)]
-          (if-let [child (.get children child-key)]
-            ;; Update existing child
-            (update-node! scene child child-form changelog)
-            ;; Add new child
-            (when-let [child-node (add-node! scene node child-key child-form changelog)]
-              (.set children child-key child-node))))))))
+        (let [key ($ node "key")
+              children ($ node "children")
+              old-data ($ node "data")
+              shallow-node (->node-shallow key rendered-form)
+              new-data (:data shallow-node)
+              current-keys (set (es6-iterator-seq (.keys children)))
+              new-keys (set (map first (:children-keys shallow-node)))
+              dropped-keys (clojure.set/difference current-keys new-keys)]
+          (if (nil? new-data)
+            ;; This node likely changed from a fn to a literal
+            (do
+              (remove-node! node changelog)
+              (add-node! scene ($ node "parent") ($ node "key") new-form changelog))
+            (do
+              ($! node "data" new-data)
+              (when render-fn
+                ($! node "form" (into [render-fn] (rest new-form))))
+              ($! node "rendered-form" new-form)
+              (.push changelog [node :update old-data new-data])
+              ;; Remove children that no longer exist
+              (doseq [child-key dropped-keys]
+                (let [child-node (.get children child-key)]
+                  (remove-node! child-node changelog))
+                (.delete children child-key))
+              ;; Update existing children and add new children
+              (doseq [[child-key child-form] (:children-keys shallow-node)]
+                (if-let [child (.get children child-key)]
+                  ;; Update existing child
+                  (update-node! scene child child-form changelog)
+                  ;; Add new child
+                  (when-let [child-node (add-node! scene node child-key child-form changelog)]
+                    (.set children child-key child-node))))))))))
 
 (defn- render-node! [scene node changelog]
   (let [form ($ node "form")]
