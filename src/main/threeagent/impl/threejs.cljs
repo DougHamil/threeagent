@@ -1,5 +1,4 @@
-(ns threeagent.impl.threejs
-  (:require [threeagent.impl.util :refer [$ $!]]))
+(ns threeagent.impl.threejs)
 
 (defn perspective-camera [fov aspect near far]
   (new js/THREE.PerspectiveCamera fov aspect near far))
@@ -31,7 +30,7 @@
 (defn mesh-phong-material [c]
   (new js/THREE.MeshPhongMaterial (clj->js c)))
 
-(defn mesh [geo mat]
+(defn mesh [^js geo ^js mat]
   (new js/THREE.Mesh geo mat))
 
 (defn object []
@@ -63,36 +62,36 @@
 (defn raycaster [origin dir near far]
   (new js/THREE.Raycaster origin dir near far))
 
-(defn world-position [obj]
+(defn world-position [^js obj]
   (when obj
     (let [v (vec3)]
       (.getWorldPosition obj v)
       v)))
 
-(defn rotation->direction [obj]
+(defn rotation->direction [^js obj]
   (let [quat (.setFromRotationMatrix (new js/THREE.Quaternion) (.-matrixWorld obj))
         vector (vec3 0 1 0)]
     (.applyQuaternion vector quat)
     (.normalize vector)
     vector))
 
-(defn set-position! [obj [x y z]]
+(defn set-position! [^js obj [x y z]]
   (.set (.-position obj) x y z)
   obj)
 
-(defn set-rotation! [obj [x y z]]
+(defn set-rotation! [^js obj [x y z]]
   (.setRotationFromEuler obj (euler x y z))
   obj)
 
-(defn set-scale! [obj [x y z]]
+(defn set-scale! [^js obj [x y z]]
   (.set (.-scale obj) x y z)
   obj)
 
-(defn add-child! [parent child] (.add parent child))
+(defn add-child! [^js parent ^js child] (.add parent child))
 
-(defn remove-child! [parent child] (.remove parent child))
+(defn remove-child! [^js parent ^js child] (.remove parent child))
 
-(defn remove-all-children! [parent]
+(defn remove-all-children! [^js parent]
   (for [c (.-children parent)]
     (remove-child! parent c))
   parent)

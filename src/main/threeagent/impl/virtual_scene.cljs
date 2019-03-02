@@ -1,23 +1,25 @@
 (ns threeagent.impl.virtual-scene
-  (:require [threeagent.impl.util :refer [$ $! log]]
+  (:require [threeagent.impl.util :refer [log]]
             [medley.core :as medley]
             [reagent.ratom :as ratom]
             [reagent.core :as reagent])
   (:import [goog.structs PriorityQueue]))
 
+(set! *warn-on-infer* true)
+
 (defonce ^:private non-component-keys #{:position :rotation :scale})
 
 (defn print-tree
-  ([node]
+  ([^Node node]
    (print-tree node ""))
-  ([node p]
-   (let [is-reactive (some? ($ node "reaction"))]
+  ([^Node node p]
+   (let [is-reactive (some? (.-reaction node))]
     (println p "|-"
-              ($ node "key")
-              (str "comp:" (:component-key ($ node "data")))
-              (str "dirty:" ($ node "dirty"))
+              (.-key node)
+              (str "comp:" (:component-key (.-data node)))
+              (str "dirty:" (.-dirty node))
               (str "reactive:" is-reactive))
-    (doseq [child (es6-iterator-seq (.values ($ node "children")))]
+    (doseq [child (es6-iterator-seq (.values (.-children node)))]
       (print-tree child (str p "\t"))))))
 
 (defn node->path
@@ -25,28 +27,27 @@
    (node->path [] node))
   ([path node]
    (if node
-     (recur (conj path ($ node "key")) ($ node "parent"))
+     (recur (conj path (.-key node)) (.-parent node))
      (reverse path))))
 
 (defn get-in-node [node path]
   (if (empty? path)
     node
-    (recur (.get ($ node "children") (first path)) (rest path))))
+    (recur (.get (.-children node) (first path)) (rest path))))
 
 (defn get-key [key meta] (:key meta key))
       
-(deftype Node [parent depth key meta data dirty render reaction children]
+(deftype Node [^Node parent depth key meta data dirty render reaction children]
   Object
   (for-each-child [this f]
     (doseq [child (es6-iterator-seq (.values children))]
       (f child))))
 
-(deftype Scene [root render-queue]
+(deftype Scene [root renderQueue]
   Object
-  (enqueue-for-render [this node]
-    ($! node "dirty" true)
-    #_(println (node->path node))
-    (.enqueue render-queue ($ node "depth") node)))
+  (enqueueForRender [this ^Node node]
+    (set! (.-dirty node) true)
+    (.enqueue renderQueue (.-depth node) node)))
 
 (defn- eval-fn [f args]
   (let [result (apply f args)]
@@ -55,9 +56,9 @@
       [f result])))
 
 (defn- on-react! [ctx]
-  (let [node ($ ctx "node")
-        scene ($ ctx "scene")]
-    (.enqueue-for-render scene node)))
+  (let [node ^Node (.-node ctx)
+        scene ^Scene (.-scene ctx)]
+    (.enqueueForRender scene node)))
     
 (defn- extract-comp-config [config]
   (let [c (transient config)]
@@ -70,7 +71,7 @@
    :component-key comp-key
    :component-config (extract-comp-config comp-config)}) ;(apply dissoc comp-config non-component-keys)})
 
-(defmulti ->node (fn [scene parent key [l & r]]
+(defmulti ->node (fn [^Scene scene ^Node parent key [l & r]]
                    (cond
                       (keyword? l) :keyword
                       (fn? l) :fn
@@ -96,27 +97,27 @@
         children-map (js/Map.)
         data (node-data comp-key comp-config)
         depth (if parent
-                (inc ($ parent "depth"))
+                (inc (.-depth parent))
                 0)
         node (Node. parent depth key metadata data false nil nil children-map)]
     (doseq [[idx child] (medley/indexed children)]
       (when-let [child-node (->node scene node idx child)]
-        (.set children-map ($ child-node "key") child-node)))
+        (.set children-map (.-key child-node) child-node)))
     node))
 
 (defmethod ->node :fn [scene parent key form]
   (let [key (or (:key (meta form)) key)
         [f & args] form
-        reaction-ctx (clj->js {:node nil :reaction nil})
+        reaction-ctx ^js (clj->js {:node nil :reaction nil})
         [final-fn result] (ratom/run-in-reaction #(eval-fn f args) reaction-ctx "reaction" on-react! {:no-cache true})
-        node (->node scene parent key result)]
-    ($! node "render" final-fn)
-    ($! node "form" form)
-    ($! node "rendered-form" result)
-    (when-let [reaction ($ reaction-ctx "reaction")]
-      ($! reaction-ctx "scene" scene)
-      ($! reaction-ctx "node" node)
-      ($! node "reaction" reaction))
+        node ^Node (->node scene parent key result)]
+    (set! (.-render node) final-fn)
+    (set! (.-form node) form)
+    (set! (.-renderedForm node) result)
+    (when-let [reaction (.-reaction reaction-ctx)]
+      (set! (.-scene reaction-ctx) scene)
+      (set! (.-node reaction-ctx) node)
+      (set! (.-reaction node) reaction))
     node))
 
 (defn- form->form-type [[l & r]]
@@ -150,35 +151,35 @@
      :children-keys (map-indexed #(vector (or (:key (meta %2)) %1) %2)
                                 children)}))
 
-(defn- dispose-node! [node]
-  ($! node "disposed" true)
-  (when-let [reaction ($ node "reaction")]
+(defn- dispose-node! [^Node node]
+  (set! (.-disposed node) true)
+  (when-let [reaction (.-reaction node)]
     (ratom/dispose! reaction))
   (.for-each-child node dispose-node!))
 
-(defn- add-node! [scene parent-node key form changelog]
+(defn- add-node! [^Scene scene ^Node parent-node key form changelog]
   (when-let [node (->node scene parent-node key form)]
-    (.push changelog [node :add nil ($ node "data")])
+    (.push changelog [node :add nil (.-data node)])
     node))
 
-(defn- remove-node! [node changelog]
-  (.push changelog [node :remove ($ node "data") nil])
-  ($! node "data" nil)
-  ($! node "dirty" false)
+(defn- remove-node! [^Node node changelog]
+  (.push changelog [node :remove (.-data node) nil])
+  (set! (.-data node) nil)
+  (set! (.-dirty node) false)
   (dispose-node! node))
 
-(defn- update-node! [scene node new-form changelog]
-  ($! node "dirty" false)
-  (let [render-fn ($ node "render")
+(defn- update-node! [^Scene scene ^Node node new-form changelog]
+  (set! (.-dirty node) false)
+  (let [render-fn (.-render node)
         new-type (form->form-type new-form)
         rendered-form (if (and render-fn (= :fn new-type))
                         (apply render-fn (rest new-form))
                         new-form)
-        old-form ($ node "rendered-form")]
+        old-form (.-renderedForm node)]
     (when (not= rendered-form old-form)
-        (let [key ($ node "key")
-              children ($ node "children")
-              old-data ($ node "data")
+        (let [key (.-key node)
+              children (.-children node)
+              old-data (.-data node)
               shallow-node (->node-shallow key rendered-form)
               new-data (:data shallow-node)
               current-keys (set (es6-iterator-seq (.keys children)))
@@ -188,12 +189,12 @@
             ;; This node likely changed from a fn to a literal
             (do
               (remove-node! node changelog)
-              (add-node! scene ($ node "parent") ($ node "key") new-form changelog))
+              (add-node! scene (.-parent node) (.-key node) new-form changelog))
             (do
-              ($! node "data" new-data)
+              (set! (.-data node) new-data)
               (when render-fn
-                ($! node "form" (into [render-fn] (rest new-form))))
-              ($! node "rendered-form" new-form)
+                (set! (.-form node) (into [render-fn] (rest new-form))))
+              (set! (.-renderedForm node) new-form)
               (.push changelog [node :update old-data new-data])
               ;; Remove children that no longer exist
               (doseq [child-key dropped-keys]
@@ -209,26 +210,26 @@
                   (when-let [child-node (add-node! scene node child-key child-form changelog)]
                     (.set children child-key child-node))))))))))
 
-(defn- render-node! [scene node changelog]
-  (let [form ($ node "form")]
+(defn- render-node! [^Scene scene ^Node node changelog]
+  (let [form (.-form node)]
     (update-node! scene node form changelog)))
 
-(defn render! [scene changelog]
+(defn render! [^Scene scene changelog]
   (reagent/flush)
-  (let [queue ($ scene "render_queue")]
-    (loop [node (.dequeue queue)]
+  (let [queue (.-renderQueue scene)]
+    (loop [node ^Node (.dequeue queue)]
       (when node
         (do
-          (when ($ node "dirty")
+          (when (.-dirty node)
             (render-node! scene node changelog))
-          (recur (.dequeue queue)))))))
+          (recur ^Node (.dequeue queue)))))))
 
-(defn destroy! [scene]
-  (dispose-node! ($ scene "root")))
+(defn destroy! [^Scene scene]
+  (dispose-node! (.-root scene)))
 
 (defn create [root-fn]
   (let [scene (Scene. nil (PriorityQueue.))
         root-node (->node scene nil 0 [root-fn])]
-    ($! scene "root" root-node)
+    (set! (.-root scene) root-node)
     scene))
 

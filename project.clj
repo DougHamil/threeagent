@@ -44,6 +44,7 @@
              :watch-paths ["src/main" "demo"]
              :figwheel {:on-jsload "threeagent.demo.core/on-js-reload"}
              :compiler {:optimizations :none
+                        :infer-externs true
                         :main threeagent.demo.core
                         :output-dir "resources/public/js/out"
                         :output-to "resources/public/js/main.js"
