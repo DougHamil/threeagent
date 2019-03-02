@@ -155,6 +155,7 @@
         ($! render-pass "renderToScreen" true)
         (.addPass composer render-pass))
       (let [context (clj->js {:scene-root scene-root
+                              :canvas canvas
                               :camera camera
                               :before-render-cb on-before-render-cb
                               :stats (when (exists? js/Stats)
@@ -170,15 +171,14 @@
         ($! context "animate-fn" #(animate context))
         context)))
 
-(defn- remove-all-children! [obj]
-  (doseq [child ($ obj "children")]
-    (.remove obj child)))
+(defn- remove-all-children! [vscene-root]
+  (.for-each-child vscene-root remove-node!))
 
 (defn reset-scene! [scene root-fn {:keys [on-before-render]}]
   (let [root ($ scene "scene-root")
         virtual-scene ($ scene "virtual-scene")
         new-virtual-scene (vscene/create root-fn)]
-    (remove-all-children! root)
+    (remove-all-children! ($ virtual-scene "root"))
     (vscene/destroy! virtual-scene)
     (init-scene scene new-virtual-scene root)
     ($! scene "virtual-scene" new-virtual-scene)

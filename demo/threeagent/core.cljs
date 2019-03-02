@@ -10,9 +10,9 @@
                          :color-1 "red"
                          :font nil}))
 
-(defn on-before-render []
+(defn on-before-render [delta-time]
   (swap! state update :rotation #(+ 0.01 %))
-  (swap! state update :time #(+ 1 %)))
+  (swap! state update :time #(+ delta-time %)))
 
 (defn box [color]
   [:box {:dims [1 1 1]
@@ -29,6 +29,34 @@
                 :font (:font @state)}]
         [:object]))))
 
+(def count-total-boxes (atom 0))
+(def count-total-spheres (atom 0))
+
+(defn- inc-count! [n a]
+  (swap! a inc)
+  (println "Added " n ":" @a))
+
+(defn- dec-count! [n a]
+  (swap! a dec)
+  (println "Removed " n ":" @a))
+
+(defn add-remove-check [a]
+  (fn [a]
+    [:object
+     ^{:on-added #(inc-count! "Box" count-total-boxes)
+       :on-removed #(dec-count! "Box" count-total-boxes)}
+     [:box]
+     (when (= (mod (int a) 4) 0)
+      ^{:on-added #(inc-count! "Sphere" count-total-spheres)
+        :on-removed #(dec-count! "Sphere" count-total-spheres)}
+      [:sphere])]))
+
+(defn add-remove-check-wrapper []
+  [:object {:position [0 0 -10]}
+   (let [time @(th/cursor state [:time])]
+     (when (= (mod (int time) 2) 0)
+      [add-remove-check time]))])
+
 (defn wave [color count]
   (let [time @(th/cursor state [:time])]
     [:object
@@ -44,8 +72,8 @@
    [:point-light {:position [0 5 10]
                   :color 0xFFFFFF
                   :intensity 2.0}]
+   [add-remove-check-wrapper]
    [:object {:position [0 2 -10]}
-    [box @(th/cursor state [:color-1])]
     [counter]]
    [:object {:rotation [0 (:rotation @state) 0]
              :position [0 0 -10]}
