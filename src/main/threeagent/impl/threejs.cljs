@@ -70,7 +70,7 @@
 
 (defn rotation->direction [^js obj]
   (let [quat (.setFromRotationMatrix (new js/THREE.Quaternion) (.-matrixWorld obj))
-        vector (vec3 0 1 0)]
+        vector ^js (vec3 0 1 0)]
     (.applyQuaternion vector quat)
     (.normalize vector)
     vector))

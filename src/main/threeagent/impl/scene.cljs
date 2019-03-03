@@ -151,7 +151,6 @@
                                   1000)
     (js/THREE.PerspectiveCamera. 75 (/ width height) 0.1 1000)))
          
-
 (defn- create-context [root-fn dom-root on-before-render-cb ortho-camera? renderer-opts]
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
