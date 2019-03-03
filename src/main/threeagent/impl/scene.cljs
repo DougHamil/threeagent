@@ -5,8 +5,6 @@
             [threeagent.impl.component :refer [render-component]]
             [cljs.core :refer [exists?]]))
 
-(set! *warn-on-infer* true)
-
 (defn- create-object [node-data]
   (let [comp-config (:component-config node-data)
         obj (render-component (:component-key node-data) comp-config)]
