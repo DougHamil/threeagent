@@ -54,6 +54,8 @@ For lein-cljsbuild, add an npm-deps entry on THREE.js:
 (defonce scene (th/render root (.-body js/document)))
 ```
 
+[More example projects](https://github.com/DougHamil/threeagent-examples)
+
 ## Usage
 
 ### Share state with Reagent
