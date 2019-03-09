@@ -13,7 +13,7 @@
             [lein-doo "0.1.10"]
             [lein-figwheel "0.5.18"]]
 
-  :profiles {:dev {:dependencies [[org.clojure/clojurescript "1.10.439"]
+  :profiles {:dev {:dependencies [[org.clojure/clojurescript "1.10.520"]
                                   [cider/cider-nrepl "0.20.1-SNAPSHOT"]
                                   [cider/piggieback "0.3.10"]
                                   [figwheel "0.5.18"]
@@ -37,8 +37,8 @@
                         :main "threeagent.runner"
                         :output-dir "target/cljsbuild/test/out"
                         :output-to "target/cljsbuild/test/main.js"
-                        :foreign-libs [{:file "node_modules/three/build/three.js"
-                                        :provides ["THREE"]}]}}
+                        :install-deps true
+                        :npm-deps {:three "0.100.0"}}}
             {:id "demo"
              :source-paths ["demo"]
              :watch-paths ["src/main" "demo"]
@@ -50,8 +50,6 @@
                         :output-to "resources/public/js/main.js"
                         :asset-path "js/out"
                         :aot-cache false
-                        :foreign-libs [{:file "node_modules/three/build/three.js"
-                                        :provides ["THREE"]}]
                         :install-deps true
                         :npm-deps {:three "0.100.0"}}}]})
                         

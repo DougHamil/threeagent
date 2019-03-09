@@ -3,6 +3,7 @@
             [threeagent.impl.util :refer [log]]
             [threeagent.impl.threejs :as threejs]
             [threeagent.impl.component :refer [render-component]]
+            ["three" :as three]
             [cljs.core :refer [exists?]]))
 
 (defn- create-object [node-data]
@@ -141,40 +142,32 @@
 
 (defn- create-camera [width height ortho?]
   (if ortho?
-    (js/THREE.OrthographicCamera. (/ width -2.0)
+    (three/OrthographicCamera. (/ width -2.0
                                   (/ width 2.0)
                                   (/ height 2.0)
                                   (/ height -2.0)
                                   0.1
-                                  1000)
-    (js/THREE.PerspectiveCamera. 75 (/ width height) 0.1 1000)))
+                                  1000))
+    (three/PerspectiveCamera. 75 (/ width height) 0.1 1000)))
          
 (defn- create-context [root-fn dom-root on-before-render-cb ortho-camera? renderer-opts]
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
         virtual-scene (vscene/create root-fn)
-        renderer (new js/THREE.WebGLRenderer (clj->js (merge renderer-opts
+        renderer (new three/WebGLRenderer (clj->js (merge renderer-opts
                                                              {:canvas canvas})))
         camera (create-camera width height ortho-camera?)
-        scene-root (new js/THREE.Scene)
-        composer (when (exists? js/POSTPROCESSING)
-                   (new js/POSTPROCESSING.EffectComposer renderer))
-        render-pass (when (exists? js/POSTPROCESSING)
-                      (new js/POSTPROCESSING.RenderPass scene-root camera))]
+        scene-root (new three/Scene)]
       (.setSize renderer width height)
-      (when composer
-        (set! (.-renderToScreen render-pass) true)
-        (.addPass composer render-pass))
       (let [context ^js (clj->js {:sceneRoot scene-root
                                   :canvas canvas
                                   :camera camera
                                   :beforeRenderCb on-before-render-cb
                                   :stats (when (exists? js/Stats)
                                           (js/Stats.))
-                                  :clock (js/THREE.Clock.)
+                                  :clock (three/Clock.)
                                   :renderer renderer
-                                  :composer composer
                                   :virtualScene virtual-scene})]
         (init-scene context virtual-scene scene-root)
         (when (.-stats context)

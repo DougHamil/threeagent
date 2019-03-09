@@ -1,5 +1,6 @@
 (ns threeagent.impl.component
-  (:require [threeagent.impl.threejs :as threejs])
+  (:require [threeagent.impl.threejs :as threejs]
+            ["three" :as three])
   (:require-macros [threeagent.impl.component-macros :refer [defrenderer]]))
 
 (def ^:private ^:dynamic component-registry {})
@@ -14,7 +15,7 @@
       (println "Missing renderer for object type" key))))
 
 (defn- ->material [config]
-  (if (instance? js/THREE.Material config)
+  (if (instance? three/Material config)
     config
     (threejs/mesh-phong-material config)))
 

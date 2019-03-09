@@ -1,7 +1,6 @@
 (ns threeagent.demo.core
   (:require [threeagent.alpha.core :as th]
-            [THREE]))
-
+            ["three" :as three]))
 
 (enable-console-print!)
 
@@ -32,13 +31,9 @@
 (def count-total-boxes (atom 0))
 (def count-total-spheres (atom 0))
 
-(defn- inc-count! [n a]
-  (swap! a inc)
-  (println "Added " n ":" @a))
+(defn- inc-count! [n a] (swap! a inc))
 
-(defn- dec-count! [n a]
-  (swap! a dec)
-  (println "Removed " n ":" @a))
+(defn- dec-count! [n a] (swap! a dec))
 
 (defn add-remove-check [a]
   (fn [a]
@@ -64,7 +59,7 @@
        [:sphere {:radius 0.5
                  :material {:color color}
                  :position [(- i (/ count 2))
-                            (+ -2 (.sin js/Math (+ i (/ time 15))))
+                            (+ -2 (.sin js/Math (+ i (* 2.0 time))))
                             0]}])]))
 
 (defn root []
@@ -99,7 +94,7 @@
 (defn on-js-reload []
   (th/reload-scene scene [root] {:on-before-render on-before-render}))
 
-(let [loader (new js/THREE.FontLoader)]
+(let [loader (new three/FontLoader)]
   (.load loader "fonts/helvetiker_bold.typeface.json" #(do
                                                          (println "Font loaded")
                                                          (swap! state assoc :font %))))
