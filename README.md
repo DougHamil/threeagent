@@ -4,7 +4,20 @@ ClojureScript library for building Three.js apps in a reagent-like fashion
 ## Installation
 [![Clojars Project](https://clojars.org/doughamil/threeagent/latest-version.svg)](https://clojars.org/doughamil/threeagent)
 
-`TODO: Add THREE.js instructions`
+threeagent depends on THREE.js, so it will need to be added as a dependency to your project as well.
+
+For shadow-cljs:
+```
+npm install --save three
+```
+
+For lein-cljsbuild:
+```clojure
+:cljsbuild {:builds [{...
+                      :compiler {...
+                                 :install-deps true
+                                 :npm-deps {:three "0.100.0"}}}]}
+```
  
 ## Getting Started
 `TODO`
