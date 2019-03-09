@@ -19,9 +19,6 @@ For lein-cljsbuild, add an npm-deps entry on THREE.js:
                                  :npm-deps {:three "0.100.0"}}}]}
 ```
  
-## Getting Started
-`TODO`
-
 ## Example
 ```clojure
 (ns my-app.core
@@ -56,3 +53,15 @@ For lein-cljsbuild, add an npm-deps entry on THREE.js:
 ;; Initialize and begin rendering threeagent scene
 (defonce scene (th/render root (.-body js/document)))
 ```
+
+## Usage
+
+### Basics
+
+### Custom Components
+`defrenderer`
+
+### THREE.js Object Instances
+`:instance component`
+
+### WebVR Support
