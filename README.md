@@ -56,7 +56,7 @@ For lein-cljsbuild, add an npm-deps entry on THREE.js:
 
 ## Usage
 
-### Basics
+### Share state with Reagent
 
 ### Custom Components
 `defrenderer`
