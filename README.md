@@ -4,11 +4,21 @@ ClojureScript library for building Three.js apps in a reagent-like fashion
 ## Installation
 [![Clojars Project](https://clojars.org/doughamil/threeagent/latest-version.svg)](https://clojars.org/doughamil/threeagent)
 
-`TODO: Add THREE.js instructions`
- 
-## Getting Started
-`TODO`
+threeagent depends on THREE.js, so it will need to be added as a dependency to your project as well.
 
+For shadow-cljs, install THREE.js using npm:
+```
+npm install --save three
+```
+
+For lein-cljsbuild, add an npm-deps entry on THREE.js:
+```clojure
+:cljsbuild {:builds [{...
+                      :compiler {...
+                                 :install-deps true
+                                 :npm-deps {:three "0.100.0"}}}]}
+```
+ 
 ## Example
 ```clojure
 (ns my-app.core
@@ -43,3 +53,17 @@ ClojureScript library for building Three.js apps in a reagent-like fashion
 ;; Initialize and begin rendering threeagent scene
 (defonce scene (th/render root (.-body js/document)))
 ```
+
+[More example projects](https://github.com/DougHamil/threeagent-examples)
+
+## Usage
+
+### Share state with Reagent
+
+### Custom Components
+`defrenderer`
+
+### THREE.js Object Instances
+`:instance component`
+
+### WebVR Support
