@@ -8,7 +8,7 @@
 
 (defonce ^:private contexts (array))
 
-(deftype SceneContext [^vscene/Scene virtualScene
+(deftype Context [^vscene/Scene virtualScene
                        ^vscene/Node sceneRoot
                        ^js domRoot
                        ^js animateFn
@@ -28,12 +28,12 @@
     (threejs/set-scale! obj (:scale node-data))
     obj))
 
-(defn- set-node-object [^SceneContext context ^vscene/Node node node-data obj]
+(defn- set-node-object [^Context context ^vscene/Node node node-data obj]
   (set! (.-threejs node) obj)
   (when (= :camera (:component-key node-data))
     (set! (.-camera context) obj)))
 
-(defn- add-node [^SceneContext context parent-object ^vscene/Node node]
+(defn- add-node [^Context context parent-object ^vscene/Node node]
   (try
     (let [node-data (.-data node)
           comp-config (:component-config node-data)
@@ -59,7 +59,7 @@
     (.remove parent-obj obj)
     (.for-each-child node remove-node!)))
 
-(defn- init-scene [^SceneContext context virtual-scene scene-root]
+(defn- init-scene [^Context context virtual-scene scene-root]
   (add-node context scene-root (.-root virtual-scene)))
 
 (defn diff-data [o n]
@@ -74,7 +74,7 @@
      :position position
      :rotation rotation}))
 
-(defn- update-node! [^SceneContext context node old-data new-data]
+(defn- update-node! [^Context context node old-data new-data]
   (let [diff (diff-data old-data new-data)
         old-obj ^js (.-threejs node)
         metadata (.-meta node)
@@ -86,13 +86,16 @@
               parent-obj (.-parent old-obj)
               children (.-children old-obj)
               new-obj (create-object new-data)]
+          (.dispatchEvent old-obj #js {:type "on-removed"})
           (when-let [callback (:on-removed metadata)]
             (callback old-obj))
           (set-node-object context node new-data new-obj)
           (.remove parent-obj old-obj)
           (.add parent-obj new-obj)
-          (doseq [child children]
-            (.add new-obj child))
+          (when-not (.terminal? node)
+            (doseq [child children]
+              (.add new-obj child)))
+          (.dispatchEvent new-obj #js {:type "on-added"})
           (when-let [callback (:on-added metadata)]
             (callback new-obj)))
         (catch :default ex
@@ -105,7 +108,7 @@
         (when (:rotation diff) (threejs/set-rotation! old-obj (:rotation diff)))
         (when (:scale diff) (threejs/set-scale! old-obj (:scale diff)))))))
 
-(defn- apply-change! [^SceneContext context [^vscene/Node node action old new]]
+(defn- apply-change! [^Context context [^vscene/Node node action old new]]
   (cond
     (= :add action)
     (add-node context ^js (.-threejs (.-parent node)) node)
@@ -116,11 +119,11 @@
     (= :update action)
     (update-node! context node old new)))
 
-(defn- apply-virtual-scene-changes! [^SceneContext context changelog]
+(defn- apply-virtual-scene-changes! [^Context context changelog]
   (doseq [change changelog]
     (apply-change! context change)))
 
-(defn- animate [^SceneContext context]
+(defn- animate [^Context context]
   (let [stats (.-stats context)
         clock (.-clock context)
         virtual-scene ^vscene/Scene (.-virtualScene context)
@@ -156,7 +159,7 @@
       (.appendChild dom-root c))))
 
 
-(defn- ^SceneContext create-context [root-fn dom-root on-before-render-cb on-after-render-cb]
+(defn- ^Context create-context [root-fn dom-root on-before-render-cb on-after-render-cb]
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
@@ -166,7 +169,7 @@
         scene-root (new three/Scene)
         clock (new three/Clock)]
       (.setSize renderer width height)
-      (let [context (SceneContext. virtual-scene
+      (let [context (Context. virtual-scene
                                    scene-root
                                    dom-root nil
                                    canvas camera clock renderer on-before-render-cb on-after-render-cb)]
@@ -178,7 +181,7 @@
 (defn- remove-all-children! [^vscene/Node vscene-root]
   (.for-each-child vscene-root remove-node!))
 
-(defn- reset-context! [^SceneContext context root-fn {:keys [on-before-render on-after-render]}]
+(defn- reset-context! [^Context context root-fn {:keys [on-before-render on-after-render]}]
   (let [scene-root ^js (.-sceneRoot context)
         virtual-scene ^vscene/Scene (.-virtualScene context)
         new-virtual-scene (vscene/create root-fn)]
@@ -193,7 +196,7 @@
 (defn- find-context [dom-root]
   (first (filter #(= (.-domRoot %) dom-root) contexts)))
 
-(defn ^SceneContext render [root-fn
+(defn ^Context render [root-fn
                             dom-root
                             {:keys [on-before-render on-after-render] :as config}]
   (if-let [existing-context (find-context dom-root)]

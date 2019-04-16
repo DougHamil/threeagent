@@ -28,11 +28,12 @@
      (recur (conj path (.-key node)) (.-parent node))
      (reverse path))))
 
-
 (defn get-key [key meta] (:key meta key))
       
 (deftype Node [^Node parent depth key meta data dirty render reaction children]
   Object
+  (terminal? [this]
+    (= 0 (.-size children)))
   (for-each-child [this f]
     (doseq [child (es6-iterator-seq (.values children))]
       (f child))))
