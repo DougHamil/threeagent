@@ -4,7 +4,7 @@ executors:
   my-executor:
     docker:
       - image: douggernaut/threeagent-ci:0.0.1
-    working_directory: /tmp
+    working_directory: /tmp/workspace
 
 jobs:
   build:
