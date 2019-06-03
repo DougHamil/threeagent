@@ -22,7 +22,7 @@ jobs:
           command: npm install
       - run:
           name: Building test cljs
-          command: lein cljsbuild test once
+          command: lein cljsbuild once
       - run:
           name: Running karma tests
           command: karma start --single-run
