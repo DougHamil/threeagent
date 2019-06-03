@@ -1,10 +1,14 @@
 version: 2.1
 
+executors:
+  my-executor:
+    docker:
+      - image: douggernaut/threeagent-ci:0.0.1
+    working_directory: /tmp
 
 jobs:
   build:
-    docker:
-      - image: douggernaut/threeagent-ci:0.0.1
+    executor: my-executor
     steps:
       - attach_workspace:
           at: /tmp/workspace
@@ -19,19 +23,17 @@ jobs:
           name: Building cljs
           command: lein cljsbuild once
       - persist_to_workspace:
-          root: /tmp/workspace
+          root: ./
           paths:
-            - target
-            - node_modules
+            - ./*
   test:
-    docker:
-      - image: douggernaut/threeagent-ci:0.0.1
+    executor: my-executor
     steps:
       - attach_workspace:
           at: /tmp/workspace
       - run:
           name: Running karma tests
-          command: ./node_modules/.bin/karma start --single-run
+          command: /tmp/workspace/node_modules/.bin/karma start --single-run
     
 
 workflows:
