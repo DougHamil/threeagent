@@ -14,5 +14,4 @@ jobs:
 workflows:
   Welcome:
     jobs:
-      - welcome/run
-
+      - build
