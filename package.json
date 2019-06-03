@@ -1,1 +1,11 @@
-{}
+{
+  "dependencies": {
+    "@cljs-oss/module-deps": "^1.1.1",
+    "three": "^0.100.0"
+  },
+  "devDependencies": {
+    "karma": "^4.1.0",
+    "karma-chrome-launcher": "^2.2.0",
+    "karma-cljs-test": "^0.1.0"
+  }
+}

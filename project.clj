@@ -24,7 +24,7 @@
 
   :npm {:dependencies [[three "0.100.0"]]}
 
-  :doo {:test "test"}
+  :doo {:build "test"}
 
   :figwheel {:http-server-root "public"
              :nrepl-port 7889

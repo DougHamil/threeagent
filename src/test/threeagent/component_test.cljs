@@ -1,15 +1,15 @@
 (ns threeagent.component-test
   (:require [cljs.test :refer-macros [deftest is testing]]
             [threeagent.impl.component :as comp])
-  (:require-macros [threeagent.impl.component-macros :refer [defrenderer]]))
+  (:require-macros [threeagent.alpha.macros :refer [defcomponent]]))
 
-(defrenderer :custom-key [c] :render-result)
+(defcomponent :custom-key [c] :render-result)
 
-(deftest register-component-test
-  (testing "built-in renderer"
+(deftest defcomponent-test
+  (testing "built-in component"
     (is (some? (comp/render-component :object {}))))
 
-  (testing "custom renderer"
+  (testing "custom component"
     (is (= :render-result (comp/render-component :custom-key {})))))
 
 
