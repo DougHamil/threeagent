@@ -6,6 +6,8 @@ jobs:
     docker:
       - image: douggernaut/threeagent-ci:0.0.1
     steps:
+      - attach_workspace:
+          at: /tmp/workspace
       - checkout
       - run:
           name: Installing lein deps
@@ -14,13 +16,28 @@ jobs:
           name: Installing npm deps
           command: npm install
       - run:
-          name: Building test cljs
+          name: Building cljs
           command: lein cljsbuild once
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - target
+            - node_modules
+  test:
+    docker:
+      - image: douggernaut/threeagent-ci:0.0.1
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
       - run:
           name: Running karma tests
           command: ./node_modules/.bin/karma start --single-run
+    
 
 workflows:
-  Welcome:
+  build-test-deploy:
     jobs:
       - build
+      - test:
+          requires:
+            - build
