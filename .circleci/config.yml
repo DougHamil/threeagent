@@ -22,7 +22,7 @@ jobs:
           command: npm install
       - run:
           name: Running karma tests
-          command: lein doo phantom test once
+          command: lein doo karma-phantom test once
 
 workflows:
   Welcome:
