@@ -24,7 +24,8 @@
 
   :npm {:dependencies [[three "0.100.0"]]}
 
-  :doo {:build "test"}
+  :doo {:paths {:karma "node_modules/.bin/karma"
+                :phantom "node_modules\\.bin\\phantom"}}
 
   :figwheel {:http-server-root "public"
              :nrepl-port 7889

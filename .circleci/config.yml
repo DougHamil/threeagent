@@ -22,7 +22,7 @@ jobs:
           command: npm install
       - run:
           name: Running karma tests
-          command: npm install -g karma-cli && lein doo chrome-headless test once
+          command: lein doo chrome-headless test once
 
 workflows:
   Welcome:
