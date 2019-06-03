@@ -37,7 +37,8 @@
              :compiler {:optimizations :none
                         :main "threeagent.runner"
                         :output-dir "target/cljsbuild/test/out"
-                        :output-to "target/cljsbuild/test/main.js"
+                        :output-to "target/cljsbuild/test/test_suite.js"
+                        :asset-path "base/target/cljsbuild/test/out"
                         :install-deps true
                         :npm-deps {:three "0.100.0"}}}
             {:id "demo"

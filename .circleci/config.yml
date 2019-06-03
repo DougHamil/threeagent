@@ -21,8 +21,11 @@ jobs:
           name: Installing npm deps
           command: npm install
       - run:
+          name: Building test cljs
+          command: lein cljsbuild test once
+      - run:
           name: Running karma tests
-          command: lein doo karma-phantom test once
+          command: karma start --single-run
 
 workflows:
   Welcome:

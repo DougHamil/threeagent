@@ -1,9 +1,11 @@
 (ns threeagent.runner
-  (:require [doo.runner :refer-macros [doo-tests doo-all-tests]]
+  (:require [jx.reporter.karma :refer-macros [run-all-tests]]
             [cljs.test :as test]
             [threeagent.ratom-test]
             [threeagent.component-test]
             [threeagent.virtual-scene-test]))
 
 (enable-console-print!)
-(doo-all-tests #"threeagent\..*(?:-test)$")
+
+(defn ^:export run-all [karma]
+  (run-all-tests karma))
