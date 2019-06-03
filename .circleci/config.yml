@@ -9,7 +9,15 @@ jobs:
       - image: circleci/clojure:openjdk-11-lein-2.9.1
     steps:
       - checkout
-      - run: echo "hello world"
+      - deps:
+          name: Installing lein deps
+          command: lein deps
+      - npm:
+          name: Installing npm deps
+          command: npm install
+      - test:
+          name: Running karma tests
+          command: lein doo chrome-headless test once
 
 workflows:
   Welcome:
