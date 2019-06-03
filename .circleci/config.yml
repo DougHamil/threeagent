@@ -25,7 +25,7 @@ jobs:
           command: lein cljsbuild once
       - run:
           name: Running karma tests
-          command: karma start --single-run
+          command: ./node_modules/.bin/karma start --single-run
 
 workflows:
   Welcome:
