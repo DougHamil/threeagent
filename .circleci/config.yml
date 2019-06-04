@@ -15,7 +15,7 @@ jobs:
       - checkout
       - run:
           name: Updating project version
-          command: lein change version str "-" $CIRCLE_BANCH "-SNAPSHOT"
+          command: lein change version str "-" ${CIRCLE_BRANCH} "-SNAPSHOT"
       - run:
           name: Installing lein deps
           command: lein deps
