@@ -37,6 +37,8 @@ jobs:
       - run:
           name: Running karma tests
           command: /tmp/workspace/node_modules/.bin/karma start --single-run
+      - store_test_results:
+          path: reports
 
   deploy:
     executor: my-executor

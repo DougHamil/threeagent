@@ -37,7 +37,7 @@ module.exports = function(config) {
         // in `target/out/reports`.
         // <https://github.com/karma-runner/karma-junit-reporter#configuration>
         junitReporter: {
-            outputDir: 'reports'
+            outputDir: 'reports/karma'
         }
     });
 }
