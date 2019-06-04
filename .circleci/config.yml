@@ -14,6 +14,9 @@ jobs:
           at: /tmp/workspace
       - checkout
       - run:
+          name: Updating project version
+          command: lein change version str '\"-${CIRCLE_BANCH}-SNAPSHOT\"'
+      - run:
           name: Installing lein deps
           command: lein deps
       - run:
@@ -34,7 +37,15 @@ jobs:
       - run:
           name: Running karma tests
           command: /tmp/workspace/node_modules/.bin/karma start --single-run
-    
+
+  deploy:
+    executor: my-executor
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Deploying to clojars
+          command: lein deploy clojars
 
 workflows:
   build-test-deploy:
@@ -43,3 +54,11 @@ workflows:
       - test:
           requires:
             - build
+      - deploy:
+          filters:
+            branches:
+              ignore:
+                - "master"
+          requires:
+            - build
+            - test

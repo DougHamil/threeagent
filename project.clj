@@ -1,11 +1,16 @@
-(defproject doughamil/threeagent "0.0.1-SNAPSHOT"
+(defproject doughamil/threeagent "0.0.1"
   :description "Build Three.js apps in a reagent-like fashion"
   :url "https://github.com/DougHamil/threeagent"
+
+  :deploy-repositories [["clojars" {:url "https://clojars.org/repo/"
+                                    :username :env
+                                    :password :env}]]
 
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [medley "1.0.0"]
                  [reagent "0.8.1"]
                  [karma-reporter "3.1.0"]]
+
 
   :source-paths ["src/main"]
 
