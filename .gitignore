@@ -5,6 +5,10 @@ resources/public/js
 /checkouts
 /src/gen
 
+/tests/render_test/js
+/tests/render_test/diff.png
+/tests/render_test/new.png
+
 pom.xml
 pom.xml.asc
 *.iml
