@@ -14,8 +14,16 @@ jobs:
           at: /tmp/workspace
       - checkout
       - run:
+          name: Determine project version
+          command: |
+            if [ "$CIRCLE_BRANCH" == "master" ]; then
+              export VERSION_POSTFIX=""
+            else
+              export VERSION_POSTFIX="-$CIRCLE_BRANCH"
+            fi
+      - run:
           name: Updating project version
-          command: lein change version str "-" ${CIRCLE_BRANCH} "-SNAPSHOT"
+          command: lein change version str ${VERSION_POSTFIX} "-SNAPSHOT"
       - run:
           name: Installing lein deps
           command: lein deps
