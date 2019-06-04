@@ -4,11 +4,13 @@
     "three": "^0.100.0"
   },
   "devDependencies": {
+    "express": "^4.17.1",
     "karma": "^4.1.0",
     "karma-chrome-launcher": "^2.2.0",
     "karma-cljs-test": "^0.1.0",
     "karma-junit-reporter": "^1.2.0",
     "karma-phantomjs-launcher": "^1.0.4",
+    "looks-same": "^7.2.1",
     "puppeteer": "^1.17.0"
   }
 }

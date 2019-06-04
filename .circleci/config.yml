@@ -14,16 +14,8 @@ jobs:
           at: /tmp/workspace
       - checkout
       - run:
-          name: Determine project version
-          command: |
-            if [ "$CIRCLE_BRANCH" == "master" ]; then
-              export VERSION_POSTFIX=""
-            else
-              export VERSION_POSTFIX="-$CIRCLE_BRANCH"
-            fi
-      - run:
           name: Updating project version
-          command: lein change version str ${VERSION_POSTFIX} "-SNAPSHOT"
+          command: lein change version str "-SNAPSHOT"
       - run:
           name: Installing lein deps
           command: lein deps
@@ -47,6 +39,16 @@ jobs:
           command: /tmp/workspace/node_modules/.bin/karma start --single-run
       - store_test_results:
           path: reports
+  render_test:
+    executor: my-executor
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: "Running render test"
+          command: node ./tests/render_test/run.js
+      - store_artifacts:
+          path: /tmp/workspace/tests/render_test/diff.png
 
   deploy:
     executor: my-executor
@@ -64,11 +66,15 @@ workflows:
       - test:
           requires:
             - build
+      - render_test:
+          requires:
+            - build
       - deploy:
           filters:
             branches:
-              ignore:
+              only:
                 - "master"
           requires:
             - build
             - test
+            - render_test
