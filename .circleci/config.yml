@@ -1,0 +1,80 @@
+version: 2.1
+
+executors:
+  my-executor:
+    docker:
+      - image: douggernaut/threeagent-ci:0.0.1
+    working_directory: /tmp/workspace
+
+jobs:
+  build:
+    executor: my-executor
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - checkout
+      - run:
+          name: Updating project version
+          command: lein change version str "-SNAPSHOT"
+      - run:
+          name: Installing lein deps
+          command: lein deps
+      - run:
+          name: Installing npm deps
+          command: npm install
+      - run:
+          name: Building cljs
+          command: lein cljsbuild once
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - ./*
+  test:
+    executor: my-executor
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Running karma tests
+          command: /tmp/workspace/node_modules/.bin/karma start --single-run
+      - store_test_results:
+          path: reports
+  render_test:
+    executor: my-executor
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: "Running render test"
+          command: node ./tests/render_test/run.js
+      - store_artifacts:
+          path: /tmp/workspace/tests/render_test/diff.png
+
+  deploy:
+    executor: my-executor
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Deploying to clojars
+          command: lein deploy clojars
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - build
+      - test:
+          requires:
+            - build
+      - render_test:
+          requires:
+            - build
+      - deploy:
+          filters:
+            branches:
+              only:
+                - "master"
+          requires:
+            - build
+            - test
+            - render_test
