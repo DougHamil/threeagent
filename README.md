@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/DougHamil/threeagent/tree/master.svg?style=svg)](https://circleci.com/gh/DougHamil/threeagent/tree/master)
+
 # threeagent
 ClojureScript library for building Three.js apps in a reagent-like fashion
 
