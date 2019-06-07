@@ -72,15 +72,6 @@ jobs:
       - run:
           name: Release rc
           command: lein release :patch
-            
-
-# Create release branch
-# build
-# deploy last SNAPSHOT
-# deploy non-snapshot version
-# bump minor version and commit to master
-# delete release branch
-
 
 workflows:
   build-test-deploy:
