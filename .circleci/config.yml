@@ -12,11 +12,11 @@ jobs:
     steps:
       - attach_workspace:
           at: /tmp/workspace
+      - checkout
       - restore_cache:
           keys:
             - npm-{{ checksum "package-lock.json" }}
             - npm-
-      - checkout
       - run:
           name: Installing lein deps
           command: lein deps
