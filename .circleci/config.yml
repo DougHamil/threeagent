@@ -60,6 +60,7 @@ jobs:
   deploy_snapshot:
     executor: my-executor
     steps:
+      - checkout
       - run:
           name: Deploying to clojars
           command: lein deploy clojars
