@@ -10,54 +10,78 @@ jobs:
   build:
     executor: my-executor
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
       - checkout
-      - run:
-          name: Updating project version
-          command: lein change version str "-SNAPSHOT"
+      - restore_cache:
+          keys:
+            - npm-{{ checksum "package-lock.json" }}
+            - npm-
       - run:
           name: Installing lein deps
           command: lein deps
       - run:
           name: Installing npm deps
           command: npm install
-      - run:
-          name: Building cljs
-          command: lein cljsbuild once
-      - persist_to_workspace:
-          root: ./
+      - save_cache:
+          key: npm-{{ checksum "package-lock.json" }}
           paths:
-            - ./*
+            - "node_modules"
+
   test:
     executor: my-executor
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-{{ checksum "package-lock.json" }}
+            - npm-
+      - run:
+          name: Building cljs
+          command: lein cljsbuild once test
       - run:
           name: Running karma tests
           command: /tmp/workspace/node_modules/.bin/karma start --single-run
       - store_test_results:
           path: reports
+
   render_test:
     executor: my-executor
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-{{ checksum "package-lock.json" }}
+            - npm-
+      - run:
+          name: Building cljs
+          command: lein cljsbuild once render-test
       - run:
           name: "Running render test"
           command: node ./tests/render_test/run.js
       - store_artifacts:
           path: /tmp/workspace/tests/render_test/diff.png
 
-  deploy:
+  deploy_snapshot:
     executor: my-executor
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
       - run:
           name: Deploying to clojars
           command: lein deploy clojars
+
+  release_rc:
+    executor: my-executor
+    steps:
+      - checkout
+      - run:
+          name: Release rc
+          command: lein release :rc
+
+  release:
+    executor: my-executor
+    steps:
+      - checkout
+      - run:
+          name: Release rc
+          command: lein release :patch
 
 workflows:
   build-test-deploy:
@@ -66,15 +90,24 @@ workflows:
       - test:
           requires:
             - build
+
       - render_test:
           requires:
             - build
-      - deploy:
+
+      - deploy_snapshot:
           filters:
             branches:
               only:
                 - "master"
           requires:
-            - build
+            - test
+            - render_test
+
+      - release_rc:
+          filters:
+            branches:
+              only: /^release$/
+          requires:
             - test
             - render_test
