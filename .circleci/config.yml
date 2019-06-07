@@ -17,9 +17,6 @@ jobs:
           name: Updating project version
           command: lein change version str "-SNAPSHOT"
       - run:
-          name: Installing lein deps
-          command: lein deps
-      - run:
           name: Installing npm deps
           command: npm install
       - run:
