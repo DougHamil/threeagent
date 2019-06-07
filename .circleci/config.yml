@@ -12,6 +12,10 @@ jobs:
     steps:
       - attach_workspace:
           at: /tmp/workspace
+      - restore_cache:
+          keys:
+            - npm-{{ checksum "package-lock.json" }}
+            - npm-
       - checkout
       - run:
           name: Installing lein deps
@@ -22,15 +26,24 @@ jobs:
       - run:
           name: Building cljs
           command: lein cljsbuild once
+      - save_cache:
+          key: npm-{{ checksum "package-lock.json" }}
+          paths:
+            - "node_modules"
       - persist_to_workspace:
           root: ./
           paths:
-            - ./*
+            - target/*.jar
+            - tests/*
   test:
     executor: my-executor
     steps:
       - attach_workspace:
           at: /tmp/workspace
+      - restore_cache:
+          keys:
+            - npm-{{ checksum "package-lock.json" }}
+            - npm-
       - run:
           name: Running karma tests
           command: /tmp/workspace/node_modules/.bin/karma start --single-run
@@ -42,6 +55,10 @@ jobs:
     steps:
       - attach_workspace:
           at: /tmp/workspace
+      - restore_cache:
+          keys:
+            - npm-{{ checksum "package-lock.json" }}
+            - npm-
       - run:
           name: "Running render test"
           command: node ./tests/render_test/run.js
