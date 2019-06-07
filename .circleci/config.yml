@@ -10,8 +10,6 @@ jobs:
   build:
     executor: my-executor
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
       - checkout
       - restore_cache:
           keys:
@@ -23,27 +21,22 @@ jobs:
       - run:
           name: Installing npm deps
           command: npm install
-      - run:
-          name: Building cljs
-          command: lein cljsbuild once
       - save_cache:
           key: npm-{{ checksum "package-lock.json" }}
           paths:
             - "node_modules"
-      - persist_to_workspace:
-          root: ./
-          paths:
-            - target/*.jar
-            - tests/*
+
   test:
     executor: my-executor
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
+      - checkout
       - restore_cache:
           keys:
             - npm-{{ checksum "package-lock.json" }}
             - npm-
+      - run:
+          name: Building cljs
+          command: lein cljsbuild once test
       - run:
           name: Running karma tests
           command: /tmp/workspace/node_modules/.bin/karma start --single-run
@@ -53,12 +46,14 @@ jobs:
   render_test:
     executor: my-executor
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
+      - checkout
       - restore_cache:
           keys:
             - npm-{{ checksum "package-lock.json" }}
             - npm-
+      - run:
+          name: Building cljs
+          command: lein cljsbuild once render-test
       - run:
           name: "Running render test"
           command: node ./tests/render_test/run.js
@@ -68,8 +63,6 @@ jobs:
   deploy_snapshot:
     executor: my-executor
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
       - run:
           name: Deploying to clojars
           command: lein deploy clojars
