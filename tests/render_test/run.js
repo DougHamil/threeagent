@@ -14,20 +14,20 @@ function sleep(ms){
 }
 app.use(express.static('tests/render_test'))
 server = app.listen(port, () => {
-	(async () => {
-			try {
-				const browser = await puppeteer.launch({defaultViewport: {width: 1920, height:1080}});
-				const page = await browser.newPage();
+  (async () => {
+      try {
+        const browser = await puppeteer.launch({defaultViewport: {width: 1920, height:1080}});
+        const page = await browser.newPage();
 
-				await page.goto('http://localhost:8080/index.html');
-				await sleep(5000);
-				await page.screenshot({path: "tests/render_test/new.png"});
+        await page.goto('http://localhost:8080/index.html');
+        await sleep(5000);
+        await page.screenshot({path: "tests/render_test/new.png"});
 
-				looksSame.createDiff({
-					reference: "tests/render_test/baseline.png",
-					current: "tests/render_test/new.png",
-					diff: "tests/render_test/diff.png",
-					strict:true}, (err) => {
+        looksSame.createDiff({
+          reference: "tests/render_test/baseline.png",
+          current: "tests/render_test/new.png",
+          diff: "tests/render_test/diff.png",
+          strict:true}, (err) => {
             console.log("Diff image generated.");
             console.log("Running regression test...");
             looksSame("tests/render_test/baseline.png", "tests/render_test/new.png", {strict: true}, (err, {equal}) => {
@@ -40,11 +40,11 @@ server = app.listen(port, () => {
                 }
             });
           });
-				await browser.close();
-			}
-			catch (ex) {
-					console.error(ex);
-			}
-			server.close();
-	})();
+        await browser.close();
+      }
+      catch (ex) {
+          console.error(ex);
+      }
+      server.close();
+  })();
 });
