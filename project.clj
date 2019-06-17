@@ -16,7 +16,7 @@
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-doo "0.1.10"]
-            [lein-figwheel "0.5.18"]]
+            [lein-figwheel "0.5.19"]]
 
   :profiles {:dev {:dependencies [[org.clojure/clojurescript "1.10.520"]
                                   [cider/cider-nrepl "0.20.1-SNAPSHOT"]
@@ -52,6 +52,18 @@
                         :main threeagent.render-test.core
                         :output-dir "tests/render_test/js/out"
                         :output-to "tests/render_test/js/main.js"
+                        :asset-path "js/out"
+                        :aot-cache false
+                        :install-deps true
+                        :npm-deps {:three "0.100.0"}}}
+            {:id "dev"
+             :source-paths ["src/main" "src/dev"]
+             :figwheel {:on-jsload "threeagent.dev.core/on-js-reload"}
+             :compiler {:optimizations :none
+                        :infer-externs true
+                        :main threeagent.dev.core
+                        :output-dir "resources/public/js/out"
+                        :output-to "resources/public/js/main.js"
                         :asset-path "js/out"
                         :aot-cache false
                         :install-deps true
