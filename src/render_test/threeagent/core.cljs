@@ -56,3 +56,4 @@
 (defonce scene (th/render root
                           (.getElementById js/document "root")
                           {:on-before-render on-before-render}))
+
