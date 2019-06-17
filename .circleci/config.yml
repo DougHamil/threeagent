@@ -69,6 +69,13 @@ jobs:
     executor: my-executor
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "05:a7:54:63:4e:af:8f:6f:27:4c:57:26:50:a9:5e:00"
+      - run:
+          command: |
+            git config --global user.email "circleci@circleci"
+            git config --global user.name "Release Script"
       - run:
           name: Release rc
           command: lein release :rc
