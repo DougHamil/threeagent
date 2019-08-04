@@ -1,4 +1,4 @@
-(ns threeagent.alpha.component)
+(ns threeagent.component)
 
 (defonce ^:dynamic *registry* {})
 

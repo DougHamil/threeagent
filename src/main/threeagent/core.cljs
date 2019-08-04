@@ -1,4 +1,4 @@
-(ns threeagent.alpha.core
+(ns threeagent.core
   (:refer-clojure :exclude [atom])
   (:require [threeagent.impl.scene :as scene]
             [reagent.ratom :as ratom]))

@@ -23,8 +23,19 @@
 ;; Basic
 (defcomponent :object [c] (threejs/object))
 (defcomponent :group [c] (threejs/group))
-(defcomponent :camera [{:keys [fov aspectRatio near far]}]
-  (threejs/perspective-camera fov aspectRatio near far))
+
+(defcomponent :perspective-camera [{:keys [fov aspect near far]
+                                    :or {fov 75.0
+                                         aspect 1.0
+                                         near 0.1
+                                         far 2000.0}}]
+  (three/PerspectiveCamera. fov aspect near far))
+
+(defcomponent :orthographic-camera [{:keys [left right top bottom near far]
+                                     :or {near 0.1
+                                          far 2000.0}}]
+  (three/OrthographicCamera. left right top bottom near far))
+
 (defcomponent :instance [{:keys [object]}] object)
 
 ;; Primitives
