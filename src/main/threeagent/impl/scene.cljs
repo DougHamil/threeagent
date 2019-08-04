@@ -32,8 +32,7 @@
 (defn- set-node-object [^Context context ^vscene/Node node node-data obj]
   (set! (.-threejs node) obj)
   (when (.-isCamera obj)
-    (.push (.-cameras context) obj)
-    (set! (.-camera context) obj)))
+    (.push (.-cameras context) obj)))
 
 (defn- add-node [^Context context parent-object ^vscene/Node node]
   (try
@@ -198,11 +197,11 @@
         new-virtual-scene (vscene/create root-fn)]
     (remove-all-children! (.-root virtual-scene))
     (vscene/destroy! virtual-scene)
+    (set! (.-cameras context) (array))
     (init-scene context new-virtual-scene scene-root)
     (set! (.-virtualScene context) new-virtual-scene)
     (set! (.-beforeRenderCb context) on-before-render)
     (set! (.-afterRenderCb context) on-after-render)
-    (set! (.-cameras context) (array))
     context))
 
 (defn- find-context [dom-root]
