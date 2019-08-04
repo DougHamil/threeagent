@@ -24,17 +24,23 @@
 (defcomponent :object [c] (threejs/object))
 (defcomponent :group [c] (threejs/group))
 
-(defcomponent :perspective-camera [{:keys [fov aspect near far]
+(defcomponent :perspective-camera [{:keys [fov aspect near far active]
                                     :or {fov 75.0
                                          aspect 1.0
                                          near 0.1
-                                         far 2000.0}}]
-  (three/PerspectiveCamera. fov aspect near far))
+                                         far 2000.0
+                                         active true}}]
+  (let [cam (three/PerspectiveCamera. fov aspect near far)]
+    (set! (.-active cam) active)
+    cam))
 
-(defcomponent :orthographic-camera [{:keys [left right top bottom near far]
+(defcomponent :orthographic-camera [{:keys [left right top bottom near far active]
                                      :or {near 0.1
-                                          far 2000.0}}]
-  (three/OrthographicCamera. left right top bottom near far))
+                                          far 2000.0
+                                          active true}}]
+  (let [cam (three/OrthographicCamera. left right top bottom near far)]
+    (set! (.-active cam) active)
+    cam))
 
 (defcomponent :instance [{:keys [object]}] object)
 

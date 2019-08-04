@@ -14,6 +14,7 @@
                        ^js animateFn
                        ^js canvas
                        ^js camera
+                       ^js cameras
                        ^js clock
                        ^js renderer
                        ^js beforeRenderCb
@@ -30,7 +31,8 @@
 
 (defn- set-node-object [^Context context ^vscene/Node node node-data obj]
   (set! (.-threejs node) obj)
-  (when (= :camera (:component-key node-data))
+  (when (.-isCamera obj)
+    (.push (.-cameras context) obj)
     (set! (.-camera context) obj)))
 
 (defn- add-node [^Context context parent-object ^vscene/Node node]
@@ -123,13 +125,20 @@
   (doseq [change changelog]
     (apply-change! context change)))
 
+(defn- find-active-camera [^Context context]
+  (or
+   (->> (.-cameras context)
+        (filter #(.-active %))
+        (last))
+   (.-camera context)))
+
 (defn- animate [^Context context]
   (let [stats (.-stats context)
         clock (.-clock context)
         virtual-scene ^vscene/Scene (.-virtualScene context)
         renderer (.-renderer context)
         composer (.-composer context)
-        camera (.-camera context)
+        camera (find-active-camera context)
         scene-root (.-sceneRoot context)
         before-render-cb (.-beforeRenderCb context)
         after-render-cb (.-afterRenderCb context)]
@@ -166,13 +175,15 @@
         virtual-scene (vscene/create root-fn)
         renderer (new three/WebGLRenderer (clj->js {:canvas canvas}))
         camera (three/PerspectiveCamera. 75 (/ width height) 0.1 1000)
+        cameras (array)
         scene-root (new three/Scene)
         clock (new three/Clock)]
       (.setSize renderer width height)
       (let [context (Context. virtual-scene
                                    scene-root
                                    dom-root nil
-                                   canvas camera clock renderer on-before-render-cb on-after-render-cb)]
+                                   canvas camera cameras
+                                   clock renderer on-before-render-cb on-after-render-cb)]
         (set! (.-animateFn context) #(animate context))
         (init-scene context virtual-scene scene-root)
         (.push contexts context)
@@ -191,6 +202,7 @@
     (set! (.-virtualScene context) new-virtual-scene)
     (set! (.-beforeRenderCb context) on-before-render)
     (set! (.-afterRenderCb context) on-after-render)
+    (set! (.-cameras context) (array))
     context))
 
 (defn- find-context [dom-root]
