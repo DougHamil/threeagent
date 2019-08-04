@@ -1,7 +1,7 @@
 (ns threeagent.component-test
   (:require [cljs.test :refer-macros [deftest is testing]]
             [threeagent.impl.component :as comp])
-  (:require-macros [threeagent.alpha.macros :refer [defcomponent]]))
+  (:require-macros [threeagent.macros :refer [defcomponent]]))
 
 (defcomponent :custom-key [c] :render-result)
 

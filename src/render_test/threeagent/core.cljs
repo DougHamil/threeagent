@@ -1,5 +1,5 @@
 (ns threeagent.render-test.core
-  (:require [threeagent.alpha.core :as th]
+  (:require [threeagent.core :as th]
             ["three" :as three]))
 
 (enable-console-print!)

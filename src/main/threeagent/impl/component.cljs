@@ -1,9 +1,9 @@
 (ns threeagent.impl.component
   (:require [threeagent.impl.threejs :as threejs]
-            [threeagent.alpha.component :as component]
+            [threeagent.component :as component]
             [threeagent.impl.util :refer [pi-times-2 pi pi-over-2]]
             ["three" :as three])
-  (:require-macros [threeagent.alpha.macros :refer [defcomponent]]))
+  (:require-macros [threeagent.macros :refer [defcomponent]]))
 
 (defn render-component [key config]
   (let [renderer (get component/*registry* key)]

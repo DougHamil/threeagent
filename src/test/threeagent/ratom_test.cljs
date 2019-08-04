@@ -1,5 +1,5 @@
 (ns threeagent.ratom-test
-  (:require [threeagent.alpha.core :as th]
+  (:require [threeagent.core :as th]
             [cljs.test :refer-macros [deftest is testing]]))
 
 (deftest ratom-test

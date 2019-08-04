@@ -1,7 +1,7 @@
 (ns threeagent.virtual-scene-test
   (:require [cljs.test :refer-macros [deftest is testing]]
             [threeagent.impl.virtual-scene :as vscene]
-            [threeagent.alpha.core :as th]))
+            [threeagent.core :as th]))
 
 
 (defn test-rootfn []

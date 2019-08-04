@@ -24,7 +24,7 @@ For lein-cljsbuild, add an npm-deps entry on THREE.js:
 ## Example
 ```clojure
 (ns my-app.core
-  (:require [threeagent.alpha.core :as th]))
+  (:require [threeagent.core :as th]))
   
 ;; Use reactive atom for storing state
 (defonce state (th/atom {:ticks 0}))
