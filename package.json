@@ -10,6 +10,7 @@
     "karma-cljs-test": "^0.1.0",
     "karma-junit-reporter": "^1.2.0",
     "karma-phantomjs-launcher": "^1.0.4",
+    "lodash": ">=4.17.13",
     "looks-same": "^7.2.1",
     "puppeteer": "^1.17.0"
   }
