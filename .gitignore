@@ -9,6 +9,7 @@ resources/public/js
 /tests/render_test/diff.png
 /tests/render_test/new.png
 
+.projectile
 pom.xml
 pom.xml.asc
 *.iml
