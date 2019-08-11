@@ -18,6 +18,18 @@
 (defn tick [delta-time]
   (swap! state update :time + delta-time))
 
+(defn row-of-boxes [count]
+  (let [t (:time @state)]
+    [:object
+     (for [i (range count)]
+       [:box {:position [i (js/Math.sin t) 0]}])]))
+
+(defn counter [start-count]
+  (let [count (th/atom start-count)]
+    (js/window.setInterval #(swap! count inc) 1000)
+    (fn []
+       [row-of-boxes @count])))
+
 (defn gridify [spacing per-row objs]
   [:object
    (for [[i o] (map-indexed vector objs)]
@@ -53,6 +65,8 @@
    [:point-light {:position [0 5 10]
                   :color 0xFFFFFF
                   :intensity 2.0}]
+   [:object {:position [0 5 0]}
+    [counter 2]]
    [:object {:position [-8 4 0]}
     [primitives]]])
 

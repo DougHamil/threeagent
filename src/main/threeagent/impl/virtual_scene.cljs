@@ -55,7 +55,11 @@
   (let [result (apply f args)]
     (if (fn? result)
       (recur result args)
-      [f result])))
+      (if (fn? (first result))
+        [(fn []
+           [:object (f)])
+         [:object result]]
+        [f result]))))
 
 (defn- on-react! [ctx]
   (let [node ^Node (.-node ctx)
@@ -135,7 +139,7 @@
 
 (defmethod ->node-shallow :empty-list [key form])
 
-(defmethod ->node-shallow :fn [key form])
+(defmethod ->node-shallow :fn [key [f & args :as form]])
 
 (defmethod ->node-shallow :seq [key form]
   (when-not (empty? form)
@@ -189,7 +193,6 @@
     (do
       (replace-node! scene node new-form changelog))
     (let [render-fn (.-render node)
-          original-fn (.-originalFn node)
           new-type (form->form-type new-form)
           rendered-form (if (and render-fn (= :fn new-type))
                           (apply render-fn (rest new-form))
