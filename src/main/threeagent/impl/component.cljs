@@ -5,16 +5,25 @@
             ["three" :as three])
   (:require-macros [threeagent.macros :refer [defcomponent]]))
 
+(defonce ^:private material-cache (atom {}))
+
 (defn render-component [key config]
   (let [renderer (get component/*registry* key)]
     (if renderer
       (renderer config)
       (println "Missing renderer for object type" key))))
 
+(defn- cached-material [cfg]
+  (if-let [m (get @material-cache cfg)]
+    m
+    (let [m (threejs/mesh-phong-material cfg)]
+      (swap! material-cache assoc cfg m)
+      m)))
+
 (defn- ->material [config]
   (if (instance? three/Material config)
     config
-    (threejs/mesh-phong-material config)))
+    (cached-material config)))
 
 (defn- to-mesh [geo material-config]
   (let [mat (->material material-config)]
