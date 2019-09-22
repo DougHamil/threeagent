@@ -51,15 +51,18 @@
       (log e)
       (println node))))
 
+(defn- on-object-removed [^Context context ^vscene/Node node ^js obj]
+  (.dispatchEvent obj #js {:type "on-removed"})
+  (when-let [callback (:on-removed (.-meta node))]
+    (callback obj))
+  (when (.-isCamera obj)
+    (let [cams (.-cameras context)]
+      (.splice cams (.indexOf cams obj) 1))))
+
 (defn- remove-node! [^Context context ^vscene/Node node]
   (let [obj (.-threejs node)
         parent-obj ^js (.-threejs (.-parent node))]
-    (.dispatchEvent obj #js {:type "on-removed"})
-    (when-let [callback (:on-removed (.-meta node))]
-      (callback obj))
-    (when (.-isCamera obj)
-      (let [cams (.-cameras context)]
-        (.splice cams (.indexOf cams obj) 1)))
+    (on-object-removed context node obj)
     (.remove parent-obj obj)
     (.for-each-child node (partial remove-node! context))))
 
@@ -90,9 +93,7 @@
               parent-obj (.-parent old-obj)
               children (.-children old-obj)
               new-obj (create-object new-data)]
-          (.dispatchEvent old-obj #js {:type "on-removed"})
-          (when-let [callback (:on-removed metadata)]
-            (callback old-obj))
+          (on-object-removed context node old-obj)
           (set-node-object context node new-data new-obj)
           (.remove parent-obj old-obj)
           (.add parent-obj new-obj)
