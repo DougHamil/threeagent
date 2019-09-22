@@ -191,14 +191,14 @@
         (.push contexts context)
         context)))
 
-(defn- remove-all-children! [^vscene/Node vscene-root]
-  (.for-each-child vscene-root remove-node!))
+(defn- remove-all-children! [^Context context ^vscene/Node vscene-root]
+  (.for-each-child vscene-root (partial remove-node! context)))
 
 (defn- reset-context! [^Context context root-fn {:keys [on-before-render on-after-render]}]
   (let [scene-root ^js (.-sceneRoot context)
         virtual-scene ^vscene/Scene (.-virtualScene context)
         new-virtual-scene (vscene/create root-fn)]
-    (remove-all-children! (.-root virtual-scene))
+    (remove-all-children! context (.-root virtual-scene))
     (vscene/destroy! virtual-scene)
     (set! (.-cameras context) (array))
     (init-scene context new-virtual-scene scene-root)
