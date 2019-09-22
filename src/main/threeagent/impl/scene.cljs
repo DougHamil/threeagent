@@ -137,11 +137,9 @@
         virtual-scene ^vscene/Scene (.-virtualScene context)
         renderer (.-renderer context)
         composer (.-composer context)
-        camera (find-active-camera context)
         scene-root (.-sceneRoot context)
         before-render-cb (.-beforeRenderCb context)
         after-render-cb (.-afterRenderCb context)]
-    ;(log camera)
     (when stats
       (.begin stats))
     (let [delta-time (.getDelta clock)
@@ -152,10 +150,12 @@
       (vscene/render! virtual-scene changelog)
       ;; Apply virtual scene changes to ThreeJs scene
       (apply-virtual-scene-changes! context changelog)
-      ;; Render ThreeJS Scene
-      (if composer
-        (.render composer delta-time)
-        (.render renderer scene-root camera))
+      ;; Fetch camera after applying the scene changes since it might have been updated
+      (let [camera (find-active-camera context)]
+        ;; Render ThreeJS Scene
+        (if composer
+          (.render composer delta-time)
+          (.render renderer scene-root camera)))
       (when after-render-cb (after-render-cb delta-time)))
     (when stats
       (.end stats))))
