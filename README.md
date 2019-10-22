@@ -35,7 +35,7 @@ For lein-cljsbuild, add an npm-deps entry on THREE.js:
 ;; Form-1 component example
 (defn color-box [color size]
   [:box {:dims [size size size]
-         :material {:color color}])
+         :material {:color color}}])
          
 ;; Form-2 component example
 (defn growing-sphere []
