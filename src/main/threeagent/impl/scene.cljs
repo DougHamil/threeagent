@@ -27,6 +27,8 @@
     (threejs/set-position! obj (:position node-data))
     (threejs/set-rotation! obj (:rotation node-data))
     (threejs/set-scale! obj (:scale node-data))
+    (when (:cast-shadow node-data) (threejs/set-cast-shadow! obj (:cast-shadow node-data)))
+    (when (:receive-shadow node-data) (threejs/set-receive-shadow! obj (:receive-shadow node-data)))
     obj))
 
 (defn- set-node-object [^Context context ^vscene/Node node node-data obj]
@@ -75,11 +77,15 @@
                [o n])
         position (when (not= (:position o) (:position n)) (:position n))
         rotation (when (not= (:rotation o) (:rotation n)) (:rotation n))
-        scale (when (not= (:scale o) (:scale n)) (:scale n))]
+        scale (when (not= (:scale o) (:scale n)) (:scale n))
+        receive-shadow (when (not= (:receive-shadow o) (:receive-shadow n)) (:receive-shadow n))
+        cast-shadow (when (not= (:cast-shadow o) (:cast-shadow n)) (:cast-shadow n))]
     {:this this
      :scale scale
      :position position
-     :rotation rotation}))
+     :rotation rotation
+     :cast-shadow cast-shadow
+     :receive-shadow receive-shadow}))
 
 (defn- update-node! [^Context context node old-data new-data]
   (let [diff (diff-data old-data new-data)
@@ -111,7 +117,9 @@
       (do
         (when (:position diff) (threejs/set-position! old-obj (:position diff)))
         (when (:rotation diff) (threejs/set-rotation! old-obj (:rotation diff)))
-        (when (:scale diff) (threejs/set-scale! old-obj (:scale diff)))))))
+        (when (:scale diff) (threejs/set-scale! old-obj (:scale diff)))
+        (when (:cast-shadow diff) (threejs/set-cast-shadow! old-obj (:cast-shadow diff)))
+        (when (:receive-shadow diff) (threejs/set-receive-shadow! old-obj (:receive-shadow diff)))))))
 
 (defn- apply-change! [^Context context [^vscene/Node node action old new]]
   (cond
