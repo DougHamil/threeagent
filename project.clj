@@ -1,4 +1,4 @@
-(defproject doughamil/threeagent "0.0.2-SNAPSHOT"
+(defproject doughamil/threeagent "0.0.2"
   :description "Build Three.js apps in a reagent-like fashion"
   :url "https://github.com/DougHamil/threeagent"
 
