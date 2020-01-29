@@ -65,7 +65,7 @@ jobs:
           command: echo -e "$GPG_KEY" | gpg --import
       - run:
           name: Deploying to clojars
-          command: lein deploy clojars
+          command: lein deploy
 
   release_rc:
     executor: my-executor
@@ -124,7 +124,7 @@ workflows:
             - test
             - render_test
 
-      - release_rc:
+      - release:
           filters:
             branches:
               only: /^release$/

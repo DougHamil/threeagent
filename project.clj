@@ -1,11 +1,16 @@
 (defproject doughamil/threeagent "0.0.2-SNAPSHOT"
   :description "Build Three.js apps in a reagent-like fashion"
   :url "https://github.com/DougHamil/threeagent"
+  :license {:name "MIT"}
 
-  :deploy-repositories [["clojars" {:url "https://clojars.org/repo/"
-                                    :signing {:gpg-key "C89350FC"}
-                                    :username :env
-                                    :password :env}]]
+  :deploy-repositories [["releases" {:url "https://clojars.org/repo/"
+                                     :signing {:gpg-key "C89350FC"}
+                                     :username :env
+                                     :password :env}]
+                        ["snapshots" {:url "https://clojars.org/repo/"
+                                      :signing {:gpg-key "C89350FC"}
+                                      :username :env
+                                      :password :env}]]
 
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [medley "1.0.0"]
