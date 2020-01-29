@@ -67,24 +67,6 @@ jobs:
           name: Deploying to clojars
           command: lein deploy
 
-  release_rc:
-    executor: my-executor
-    steps:
-      - checkout
-      - add_ssh_keys:
-          fingerprints:
-            - "05:a7:54:63:4e:af:8f:6f:27:4c:57:26:50:a9:5e:00"
-      - run:
-          command: echo -e "$GPG_KEY" | gpg --import
-      - run:
-          command: |
-            git config --global user.email "doug.hamil@gmail.com"
-            git config --global user.name "Release Script"
-            git config --global user.signingkey C89350FC
-      - run:
-          name: Release rc
-          command: lein release :rc
-
   release:
     executor: my-executor
     steps:
@@ -99,6 +81,8 @@ jobs:
             git config --global user.email "circleci@circleci"
             git config --global user.name "Release Script"
             git config --global user.signingkey C89350FC
+            git remote set-url origin https://github.com/DougHamil/threeagent.git
+
       - run:
           name: Release rc
           command: lein release :patch
