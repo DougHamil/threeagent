@@ -81,7 +81,8 @@ jobs:
             git config --global user.email "circleci@circleci"
             git config --global user.name "Release Script"
             git config --global user.signingkey C89350FC
-            git push --set-upstream origin master
+            git push --set-upstream origin ${CIRCLE_BRANCH}
+            git remote set-url origin https://github.com/DougHamil/threeagent.git
 
       - run:
           name: Release rc
@@ -108,10 +109,20 @@ workflows:
             - test
             - render_test
 
+      - hold:
+          filters:
+            branches:
+              only: /^release$/
+          type: approval
+          requires:
+            - render_test
+            - test
+
       - release:
           filters:
             branches:
               only: /^release$/
           requires:
+            - hold
             - test
             - render_test
