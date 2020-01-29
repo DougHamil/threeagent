@@ -62,6 +62,8 @@ jobs:
     steps:
       - checkout
       - run:
+          command: echo -e "$GPG_KEY" | gpg --import
+      - run:
           name: Deploying to clojars
           command: lein deploy clojars
 
@@ -72,6 +74,8 @@ jobs:
       - add_ssh_keys:
           fingerprints:
             - "05:a7:54:63:4e:af:8f:6f:27:4c:57:26:50:a9:5e:00"
+      - run:
+          command: echo -e "$GPG_KEY" | gpg --import
       - run:
           command: |
             git config --global user.email "circleci@circleci"
@@ -87,6 +91,8 @@ jobs:
       - add_ssh_keys:
           fingerprints:
             - "05:a7:54:63:4e:af:8f:6f:27:4c:57:26:50:a9:5e:00"
+      - run:
+          command: echo -e "$GPG_KEY" | gpg --import
       - run:
           command: |
             git config --global user.email "circleci@circleci"

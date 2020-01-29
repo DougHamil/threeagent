@@ -3,6 +3,7 @@
   :url "https://github.com/DougHamil/threeagent"
 
   :deploy-repositories [["clojars" {:url "https://clojars.org/repo/"
+                                    :signing {:gpg-key "C89350FC"}
                                     :username :env
                                     :password :env}]]
 
