@@ -78,8 +78,9 @@ jobs:
           command: echo -e "$GPG_KEY" | gpg --import
       - run:
           command: |
-            git config --global user.email "circleci@circleci"
+            git config --global user.email "doug.hamil@gmail.com"
             git config --global user.name "Release Script"
+            git config --global user.signingkey C89350FC
       - run:
           name: Release rc
           command: lein release :rc
@@ -97,6 +98,7 @@ jobs:
           command: |
             git config --global user.email "circleci@circleci"
             git config --global user.name "Release Script"
+            git config --global user.signingkey C89350FC
       - run:
           name: Release rc
           command: lein release :patch
