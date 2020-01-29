@@ -1,4 +1,4 @@
-(defproject doughamil/threeagent "0.0.3-SNAPSHOT"
+(defproject doughamil/threeagent "0.0.4-SNAPSHOT"
   :description "Build Three.js apps in a reagent-like fashion"
   :url "https://github.com/DougHamil/threeagent"
   :license {:name "MIT"}
