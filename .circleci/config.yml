@@ -104,7 +104,7 @@ workflows:
           filters:
             branches:
               only:
-                - "master"
+                - "main"
           requires:
             - test
             - render_test
