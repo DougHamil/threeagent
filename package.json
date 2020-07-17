@@ -4,6 +4,7 @@
     "three": "^0.100.0"
   },
   "devDependencies": {
+    "minimist": ">=1.2.3",
     "express": "^4.17.1",
     "karma": "^4.1.0",
     "karma-chrome-launcher": "^2.2.0",
