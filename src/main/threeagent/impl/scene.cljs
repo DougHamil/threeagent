@@ -81,7 +81,7 @@
      :position position
      :rotation rotation}))
 
-(defn- update-node! [^Context context node old-data new-data]
+(defn- update-node! [^Context context ^vscene/Node node old-data new-data]
   (let [diff (diff-data old-data new-data)
         old-obj ^js (.-threejs node)
         metadata (.-meta node)
@@ -209,7 +209,7 @@
     context))
 
 (defn- find-context [dom-root]
-  (first (filter #(= (.-domRoot %) dom-root) contexts)))
+  (first (filter #(= (.-domRoot ^js %) dom-root) contexts)))
 
 (defn ^Context render [root-fn
                             dom-root

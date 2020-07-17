@@ -33,10 +33,10 @@ jobs:
             - npm-
       - run:
           name: Building cljs
-          command: lein cljsbuild once test
+          command: npx shadow-cljs compile ci
       - run:
           name: Running karma tests
-          command: /tmp/workspace/node_modules/.bin/karma start --single-run
+          command: npx karma start --single-run
       - store_test_results:
           path: reports
 

@@ -1,0 +1,13 @@
+{:source-paths ["src/main" "src/test"]
+ :dependencies [[medley "1.0.0"]
+                [reagent "0.8.1"]]
+ :builds {:test     {:target    :browser-test
+                     :test-dir  "resources/public/js/test"
+                     :ns-regexp "-test$"
+                     :devtools  {:http-port          8021
+                                 :http-root          "resources/public/js/test"}}
+          :ci {:target :karma
+               :output-to "target/ci.js"
+               :ns-regex "-test$"}}}
+               
+ 
