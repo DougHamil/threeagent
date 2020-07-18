@@ -14,8 +14,7 @@ module.exports = function(config) {
         client: {
             args: ["shadow.test.karma.init"],
             singleRun: true
-        }
-        frameworks: ['cljs-test'],
+        },
         junitReporter: {
             outputDir: 'reports/karma'
         }
