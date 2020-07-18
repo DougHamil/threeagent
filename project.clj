@@ -29,7 +29,9 @@
                                   [cider/piggieback "0.3.10"]
                                   [figwheel "0.5.18"]
                                   [doo "0.1.11"]
-                                  [karma-reporter "3.1.0"]]}}
+                                  [karma-reporter "3.1.0"]]}
+             :test {:dependencies [[thheller/shadow-cljs "2.10.15"]]
+                    :source-paths ["src/main" "src/test"]}}
 
   :npm {:dependencies [[three "0.100.0"]]}
 
@@ -40,16 +42,7 @@
              :nrepl-middleware [cider.nrepl/cider-middleware]}
 
   :cljsbuild
-  {:builds [{:id "test"
-             :source-paths [ "src/test"]
-             :compiler {:optimizations :none
-                        :main "threeagent.runner"
-                        :output-dir "target/cljsbuild/test/out"
-                        :output-to "target/cljsbuild/test/test_suite.js"
-                        :asset-path "base/target/cljsbuild/test/out"
-                        :install-deps true
-                        :npm-deps {:three "0.100.0"}}}
-            {:id "render-test"
+  {:builds [{:id "render-test"
              :source-paths ["src/render_test"]
              :watch-paths ["src/main" "src/render_test"]
              :figwheel {:on-jsload "threeagent.render-test.core/on-js-reload"}
@@ -73,7 +66,7 @@
                         :asset-path "js/out"
                         :aot-cache false
                         :install-deps true
-                        :npm-deps {:three "0.100.0"}}}]})
+                        :npm-deps {:three "0.118.0"}}}]})
                         
 
                         
