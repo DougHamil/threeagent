@@ -20,4 +20,4 @@
                                      :transparency 0.5
                                      :transparent true}))
           obj (comp/render-component :box {:material my-material})]
-      (is (not= my-material (.-material obj))))))
+      (is (= my-material (.-material obj))))))
