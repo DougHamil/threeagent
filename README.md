@@ -56,16 +56,11 @@ For lein-cljsbuild, add an npm-deps entry on THREE.js:
 (defonce scene (th/render root (.-body js/document)))
 ```
 
-[More example projects](https://github.com/DougHamil/threeagent-examples)
+## Documentation
 
-## Usage
+Please see https://doughamil.github.io/threeagent for the full documentation.
 
-### Share state with Reagent
+## Example Projects
 
-### Custom Components
-`defrenderer`
+As a demonstration of the capabilities as well as for reference, please see [these example projects](https://github.com/DougHamil/threeagent-examples)
 
-### THREE.js Object Instances
-`:instance component`
-
-### WebVR Support
