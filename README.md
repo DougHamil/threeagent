@@ -158,21 +158,169 @@ We could then use this custom component in our scene:
 For more examples, you can check out how [threeagent defines the default components](https://github.com/DougHamil/threeagent/blob/master/src/main/threeagent/impl/component.cljs)
 
 
+
+# Built-in Components
+threeagent provides a number of components out-of-the-box, allowing you to quickly get started building 3D scenes.
+
+## Common
+
+### `:object`
+
+Properties: `:position` `:rotation` `:scale`
+
+Corresponds to Object3D
+
+### `:group`
+
+Properties: `:position` `:rotation` `:scale`
+
+Corresponds to Group
+
+### `:instance`
+
+Properties: `:object`
+
+Where `:object` is a valid THREE.js object instance (Mesh, Camera, Group, etc).
+
+The value `:object` will be directly injected into the scene graph at this component's location.
+
+## Geometry
+
+### `:box`
+
+Properties: `:width` `:height` `:depth` `:width-segments` `:height-segments` `:depth-segments` `:material`
+
+Corresponds to BoxGeometry
+
+### `:plane`
+
+Properties: `:width` `:height` `:width-segments` `:height-segments` `:material`
+
+Corresponds to PlaneGeometry
+
+### `:sphere`
+
+Properties: `:radius` `:phi-start` `:phi-length` `:theta-start` `:theta-length` `:width-segments` `:height-segments` `:material`
+
+Corresponds to SphereGeometry
+
+### `:cylinder`
+
+Properties: `:radius-top` `:radius-bottom` `:height` `:radial-segments` `:height-segments` `:open-ended?` `:theta-start` `:theta-length` `:material`
+
+Corresponds to CylinderGeometry
+
+### `:circle`
+
+Properties: `:radius` `:segments` `:theta-start` `:theta-length` `:material`
+
+Corresponds to CircleGeometry
+
+### `:cone`
+
+Properties: `:radius` `:height` `:radial-segments` `:height-segments` `:open-ended?` `:theta-start` `:theta-length` `:material`
+
+Corresponds to ConeGeometry
+
+### `:dodecahedron`
+
+Properties: `:radius` `:detail` `:material`
+
+Corresponds to DodecahedronGeometry
+
+### `:icosahedron`
+
+Properties: `:radius` `:detail` `:material`
+
+Corresponds to IcosahedronGeometry
+
+### `:octahedron`
+
+Properties: `:radius` `:detail` `:material`
+
+Corresponds to OctahedronGeometry
+
+### `:tetrahedron`
+
+Properties: `:radius` `:detail` `:material`
+
+Corresponds to TetrahedronGeometry
+
+### `:ring`
+
+Properties: `:inner-radius` `:outer-radius` `:theta-segments` `:phi-segments` `:theta-start` `:theta-length` `:material`
+
+Corresponds to RingGeometry
+
+### `:torus`
+
+Properties: `:radius` `:tube` `:radial-segments` `:tubular-segments` `:arc` `:material`
+
+Corresponds to TorusGeometry
+
+### `:torus-knot`
+
+Properties: `:radius` `:tube` `:radial-segments` `:tubular-segments` `:p` `:q` `:material`
+
+Corresponds to TorusKnotGeometry
+
+### `:shape`
+
+Properties: `:shape` `:material`
+
+Where `:shape` is a valid THREE.js Shape.
+
+Corresponds to ShapeGeometry
+
+## Lights
+
+### `:ambient-light`
+
+Properties: `:color` `:intensity`
+
+Corresponds to AmbientLight
+
+### `:point-light`
+
+Properties: `:color` `:intensity` `:distance` `:decay`
+
+Corresponds to PointLight
+
+### `:hemisphere-light`
+
+Properties: `:sky-color` `:ground-color` `:intensity`
+
+Corresponds to HemisphereLight
+
+### `:rect-area-light`
+
+Properties: `:color` `:intensity` `:width` `:height`
+
+Corresponds to RectAreaLight
+
+### `:spot-light`
+
+Properties: `:color` `:intensity` `:distance` `:angle` `:penumbra` `:decay`
+
+Corresponds to SpotLight
+
+## Cameras
+
+### `:perspective-camera`
+
+Properties: `:fov` `:aspect` `:near` `:far` `:material`
+
+Corresponds to PerspectiveCamera
+
+### `:orthographic-camera`
+
+Properties: `:left` `:right` `:top` `:bottom` `:near` `:far` `:material`
+
+Corresponds to OrthographicCamera
+
+
+# Tips and Tricks
+
 ## Sharing State with Reagent
 
 threeagent's `atom` function actually just returns a reagent reactive atom. This allows you to share your state atoms between reagent and threeagent, meaning you don't need to manually synchronize your reagent-managed user interface and your threeagent-managed 3D scene.
-
-
-# API
-
-## Functions
-## Components
-threeagent provides a number of components out-of-the-box, allowing you to quickly get started building 3D scenes.
-
-### `:object`
-Properties: `:position` `:rotation` `:scale`
-
-Corresponds to the Object3D class from three.js
-
-### `:box`
-Properties: `:width` `:height` `:depth`
