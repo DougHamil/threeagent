@@ -87,7 +87,15 @@
 (defn set-scale! [^js obj [x y z]]
   (.set (.-scale obj) x y z)
   obj)
-
+  
+(defn set-cast-shadow! [^js obj ?true]
+  (set! (.-castShadow obj) ?true)
+  obj)
+  
+(defn set-receive-shadow! [^js obj ?true]
+  (set! (.-receiveShadow obj) ?true)
+  obj)
+  
 (defn add-child! [^js parent ^js child] (.add parent child))
 
 (defn remove-child! [^js parent ^js child] (.remove parent child))
