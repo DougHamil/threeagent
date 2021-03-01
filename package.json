@@ -6,7 +6,7 @@
     "phantomjs": "^2.1.7",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
-    "three": "^0.118.0"
+    "three": "^0.125.0"
   },
   "devDependencies": {
     "express": "^4.17.1",
