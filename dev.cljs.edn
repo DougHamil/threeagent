@@ -1,0 +1,6 @@
+^{:auto-testing true
+  :watch-dirs ["src/test" "src/main"]}
+{:main threeagent.runner
+ :optimizations :none
+ :output-dir "resources/public/js/out"}
+

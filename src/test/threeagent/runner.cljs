@@ -3,7 +3,8 @@
             [cljs.test :as test]
             [threeagent.ratom-test]
             [threeagent.component-test]
-            [threeagent.virtual-scene-test]))
+            [threeagent.virtual-scene-test]
+            [threeagent.edge-case-test]))
 
 (enable-console-print!)
 

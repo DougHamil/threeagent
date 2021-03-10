@@ -21,32 +21,26 @@
   :source-paths ["src/main"]
 
   :plugins [[lein-cljsbuild "1.1.7"]
-            [lein-doo "0.1.10"]
-            [lein-figwheel "0.5.19"]]
+            [lein-doo "0.1.10"]]
 
   :profiles {:dev {:dependencies [[org.clojure/clojurescript "1.10.520"]
-                                  [cider/cider-nrepl "0.20.1-SNAPSHOT"]
-                                  [cider/piggieback "0.3.10"]
-                                  [figwheel "0.5.18"]
-                                  [doo "0.1.11"]
-                                  [karma-reporter "3.1.0"]]}}
+                                  [com.bhauman/figwheel-main "0.2.3"]]
+                   :resource-paths ["target"]
+                   :source-paths ["src/main" "src/test"]}}
 
   :npm {:dependencies [[three "0.100.0"]]}
 
   :doo {:paths {:karma "node_modules/.bin/karma"}}
 
-  :figwheel {:http-server-root "public"
-             :nrepl-port 7889
-             :nrepl-middleware [cider.nrepl/cider-middleware]}
-
   :cljsbuild
   {:builds [{:id "test"
-             :source-paths [ "src/test"]
+             :source-paths ["src/main" "src/test"]
+             :figwheel true
              :compiler {:optimizations :none
                         :main "threeagent.runner"
-                        :output-dir "target/cljsbuild/test/out"
-                        :output-to "target/cljsbuild/test/test_suite.js"
-                        :asset-path "base/target/cljsbuild/test/out"
+                        :output-dir "resources/public/test/js/out"
+                        :output-to "resources/public/test/js/main.js"
+                        :asset-path "js/out"
                         :install-deps true
                         :npm-deps {:three "0.100.0"}}}
             {:id "render-test"
@@ -63,7 +57,7 @@
                         :install-deps true
                         :npm-deps {:three "0.100.0"}}}
             {:id "dev"
-             :source-paths ["src/main" "src/dev"]
+             :source-paths ["src/test" "src/main" "src/dev"]
              :figwheel {:on-jsload "threeagent.dev.core/on-js-reload"}
              :compiler {:optimizations :none
                         :infer-externs true
