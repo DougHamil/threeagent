@@ -141,7 +141,11 @@
 
 (defmethod ->node-shallow :empty-list [key form])
 
-(defmethod ->node-shallow :fn [key [f & args :as form]])
+(defmethod ->node-shallow :fn [key [f & args :as form]]
+  {:key key
+   :data (node-data :object {})
+   :form form
+   :children-keys [[0 form]]})
 
 (defmethod ->node-shallow :seq [key form]
   (when-not (empty? form)

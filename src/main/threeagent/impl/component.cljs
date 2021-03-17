@@ -56,7 +56,11 @@
 ;; Primitives
 (defcomponent :plane [{:keys [width height
                               width-segments height-segments
-                              material]}]
+                              material]
+                       :or {width 1
+                            height 1
+                            width-segments 1
+                            height-segments 1}}]
   (let [geo (three/PlaneGeometry. width height width-segments height-segments)]
     (to-mesh geo material)))
 
