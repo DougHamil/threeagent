@@ -17,7 +17,6 @@
                  [reagent "0.8.1"]
                  [karma-reporter "3.1.0"]]
 
-
   :source-paths ["src/main"]
 
   :plugins [[lein-cljsbuild "1.1.7"]
