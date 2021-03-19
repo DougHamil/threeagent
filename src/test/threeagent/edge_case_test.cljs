@@ -23,18 +23,13 @@
           changelog (array)
           before (.-data (vscene/get-in-scene scene [0 0]))]
         (swap! test-state conj {:value true})
-        (println "ORIGINAL")
-        (vscene/print-tree (.-root scene))
         (vscene/render! scene changelog)
-        (println "AFTER UPDATE")
-        (vscene/print-tree (.-root scene))
+        (is (vscene/get-in-scene scene [0 0 0]))
         (let [after (.-data (vscene/get-in-scene scene [0 0 0]))]
           (is (= :object (:component-key before)))
           (is (= :box (:component-key after))))
         (reset! test-state [])
         (vscene/render! scene changelog)
-        (println "AFTER RESET")
-        (vscene/print-tree (.-root scene))
         (let [after (.-data (vscene/get-in-scene scene [0 0]))]
           (is (= :object (:component-key before)))
           (is (= :object (:component-key after)))))))

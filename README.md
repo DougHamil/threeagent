@@ -64,3 +64,16 @@ Please see https://doughamil.github.io/threeagent for the full documentation.
 
 As a demonstration of the capabilities as well as for reference, please see [these example projects](https://github.com/DougHamil/threeagent-examples)
 
+## Development
+
+### Running Tests
+Use shadow-cljs to watch unit tests
+
+```bash
+npx shadow-cljs watch test
+```
+
+Navigate to the HTTP server that shadow-cljs creates to view the test results
+
+
+

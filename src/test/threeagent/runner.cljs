@@ -4,7 +4,8 @@
             [threeagent.ratom-test]
             [threeagent.component-test]
             [threeagent.virtual-scene-test]
-            [threeagent.edge-case-test]))
+            [threeagent.edge-case-test]
+            [threeagent.parent-transform-update-test]))
 
 (enable-console-print!)
 

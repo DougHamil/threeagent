@@ -5,6 +5,7 @@
             [reagent.core :as reagent])
   (:import [goog.structs PriorityQueue]))
 
+
 (defonce ^:private non-component-keys #{:position :rotation :scale :cast-shadow :receive-shadow})
 
 (defn print-tree
@@ -193,29 +194,41 @@
     (and (some? original-fn)
          (not= original-fn (first new-form)))))
 
-(defn- update-node! [^Scene scene ^Node node new-form changelog]
-  (set! (.-dirty node) false)
+(defn- same-args? [^Node node new-form]
+  (= (.-form node)
+     new-form))
+
+(defn- update-node! [^Scene scene ^Node node new-form changelog invoked-from-parent?]
   (if (diff-fn? node new-form)
+    ;; Completely different render function, replace
     (do
+      (set! (.-dirty node) false)
       (replace-node! scene node new-form changelog))
-    (let [render-fn (.-render node)
-          new-type (form->form-type new-form)
-          rendered-form (if (and render-fn (= :fn new-type))
-                          (apply render-fn (rest new-form))
-                          new-form)
-          old-form (.-renderedForm node)]
-      (when (not= rendered-form old-form)
-        (let [key (.-key node)
-              children (.-children node)
-              old-data (.-data node)
-              shallow-node (->node-shallow key rendered-form)
-              new-data (:data shallow-node)
-              current-keys (set (es6-iterator-seq (.keys children)))
-              new-keys (set (map first (:children-keys shallow-node)))
-              dropped-keys (clojure.set/difference current-keys new-keys)]
+    ;; Same render function, try to update in-place
+    (when  (or (not invoked-from-parent?)
+               (not (same-args? node new-form)))
+      (set! (.-dirty node) false)
+      (let [render-fn (.-render node)
+            new-type (form->form-type new-form)
+            rendered-form (if (and render-fn (= :fn new-type))
+                            (apply render-fn (rest new-form))
+                            new-form)
+            old-form (.-renderedForm node)]
+        (when (not= rendered-form old-form)
+          (let [key (.-key node)
+                children (.-children node)
+                old-data (.-data node)
+                shallow-node (->node-shallow key rendered-form)
+                new-data (:data shallow-node)
+                current-keys (set (es6-iterator-seq (.keys children)))
+                new-keys (set (map first (:children-keys shallow-node)))
+                dropped-keys (clojure.set/difference current-keys new-keys)]
             (set! (.-data node) new-data)
-            (when render-fn
-              (set! (.-form node) (into [render-fn] (rest new-form))))
+            (when (= :fn new-type)
+              (let [invocation (if render-fn
+                                 (into [render-fn] (rest new-form))
+                                 new-form)]
+                (set! (.-form node) invocation)))
             (set! (.-renderedForm node) new-form)
             (.push changelog [node :update old-data new-data])
             ;; Remove children that no longer exist
@@ -227,14 +240,14 @@
             (doseq [[child-key child-form] (:children-keys shallow-node)]
               (if-let [child (.get children child-key)]
                 ;; Update existing child
-                (update-node! scene child child-form changelog)
+                (update-node! scene child child-form changelog true)
                 ;; Add new child
                 (when-let [child-node (add-node! scene node child-key child-form changelog)]
-                  (.set children child-key child-node)))))))))
+                  (.set children child-key child-node))))))))))
 
 (defn- render-node! [^Scene scene ^Node node changelog]
   (let [form (.-form node)]
-    (update-node! scene node form changelog)))
+    (update-node! scene node form changelog false)))
 
 (defn render! [^Scene scene changelog]
   (reagent/flush)
