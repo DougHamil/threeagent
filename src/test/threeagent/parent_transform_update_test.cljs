@@ -3,7 +3,6 @@
             [threeagent.impl.virtual-scene :as vscene]
             [threeagent.core :as th]))
 
-
 (def child-render-count (atom 0))
 
 (defn child-component [state entity-key]
@@ -20,8 +19,9 @@
   [:object
    [parent-component state :entity]])
 
-(deftest update-from-literal-to-fn-component-test
+(deftest update-parent-transform-only-test
   (testing "Updating a parent component's transform should not force a re-render of children"
+    (reset! child-render-count 0)
     (let [test-state (th/atom {:entity {:position [0 0 0]
                                         :rotation [0 0 0]}})
           scene (vscene/create (partial root test-state))
