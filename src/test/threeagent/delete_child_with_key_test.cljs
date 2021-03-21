@@ -24,7 +24,9 @@
     (let [test-state (th/atom {:children #{"a" "b"}})
           scene (vscene/create (partial root test-state))
           changelog (array)]
+      (vscene/print-tree (.-root scene))
       (is (= 2 (.-size (.-children (vscene/get-in-scene scene [0 "ROOT" "PARENT" "PARENT_INNER" 0])))))
       (swap! test-state update-in [:children] disj "a")
       (vscene/render! scene changelog)
+      (vscene/print-tree (.-root scene))
       (is (= 1 (.-size (.-children (vscene/get-in-scene scene [0 "ROOT" "PARENT" "PARENT_INNER" 0]))))))))

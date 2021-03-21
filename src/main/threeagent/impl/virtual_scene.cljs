@@ -5,21 +5,21 @@
             [reagent.core :as reagent])
   (:import [goog.structs PriorityQueue]))
 
-
 (defonce ^:private non-component-keys #{:position :rotation :scale :cast-shadow :receive-shadow})
 
 (defn print-tree
   ([^Node node]
    (print-tree node ""))
   ([^Node node p]
-   (let [is-reactive (some? (.-reaction node))]
-    (println p "|-"
+   (let [is-reactive (and (some? (.-reactions node))
+                          (not (empty? (.-reactions node))))]
+     (println p "|-"
               (.-key node)
               (str "comp:" (:component-key (.-data node)))
               (str "dirty:" (.-dirty node))
               (str "reactive:" is-reactive))
-    (doseq [child (es6-iterator-seq (.values (.-children node)))]
-      (print-tree child (str p "\t"))))))
+     (doseq [child (es6-iterator-seq (.values (.-children node)))]
+       (print-tree child (str p "\t"))))))
 
 (defn node->path
   ([node]
@@ -30,7 +30,10 @@
      (reverse path))))
 
 (defn get-key [key meta] (:key meta key))
-      
+
+(deftype RenderQueueEntry [^Node node ^js renderFn ^js forceReplace]
+  Object)
+
 (deftype Node [^Node parent depth key meta data dirty render reaction children]
   Object
   (terminal? [this]
@@ -41,9 +44,9 @@
 
 (deftype Scene [root renderQueue]
   Object
-  (enqueueForRender [this ^Node node]
+  (enqueueForRender [this ^Node node ^js render-fn ^js force-replace?]
     (set! (.-dirty node) true)
-    (.enqueue renderQueue (.-depth node) node)))
+    (.enqueue renderQueue (.-depth node) (RenderQueueEntry. node render-fn force-replace?))))
 
 (defn get-in-node [^Node node path]
   (if (empty? path)
@@ -52,21 +55,11 @@
 
 (defn get-in-scene [^Scene scene path] (get-in-node (.-root scene) (rest path)))
 
-(defn- eval-fn [original-meta f args]
-  (let [result (apply f args)]
-    (if (fn? result)
-      (recur original-meta result args)
-      ^{:__origfn f}
-      [(fn re-render [& args]
-          (with-meta [:object (apply f args)]
-            original-meta))
-       result])))
-
-(defn- on-react! [ctx]
+(defn- on-react! [render-fn ctx]
   (let [node ^Node (.-node ctx)
         scene ^Scene (.-scene ctx)]
-    (.enqueueForRender scene node)))
-    
+    (.enqueueForRender scene node render-fn ^js (.-forceReplace ctx))))
+
 (defn- extract-comp-config [config]
   (let [c (transient config)]
     (persistent! (reduce #(dissoc! %1 %2) c non-component-keys))))
@@ -82,11 +75,11 @@
 
 (defmulti ->node (fn [^Scene scene ^Node parent key [l & r]]
                    (cond
-                      (keyword? l) :keyword
-                      (fn? l) :fn
-                      (sequential? l) :seq
-                      (and (nil? l) (nil? r)) :empty-list
-                      :else nil)))
+                     (keyword? l) :keyword
+                     (fn? l) :fn
+                     (sequential? l) :seq
+                     (and (nil? l) (nil? r)) :empty-list
+                     :else nil)))
 
 (defmethod ->node :default [scene parent key form]
   (println "Invalid object form:" form))
@@ -114,24 +107,51 @@
         (.set children-map (.-key child-node) child-node)))
     node))
 
+(defn- fn->render-fn [original-meta f]
+  (fn [& args]
+    (with-meta
+      [:object (apply f args)]
+      original-meta)))
+  
+
 (defmethod ->node :fn [scene parent key form]
   (let [key (or (:key (meta form)) key)
         [f & args] form
-        reaction-ctx ^js (clj->js {:node nil :reaction nil})
-        [final-fn result] (ratom/run-in-reaction #(eval-fn (meta form) f args)
-                                                 reaction-ctx
-                                                 "reaction"
-                                                 on-react!
-                                                 {:no-cache true})
-        node ^Node (->node scene parent key (with-meta [:object result] (meta form)))]
+        original-meta (meta form)
+        outer-reaction-ctx ^js (clj->js {:scene nil :node nil :reaction nil :forceReplace false})
+        inner-reaction-ctx ^js (clj->js {:scene nil :node nil :reaction nil})
+        outer-render-fn (fn->render-fn original-meta f)
+        outer-result (ratom/run-in-reaction #(apply f args)
+                                            outer-reaction-ctx
+                                            "reaction"
+                                            (partial on-react! outer-render-fn)
+                                            {:no-cache true})
+        inner-render-fn (when (fn? outer-result)
+                          (fn->render-fn original-meta outer-result))
+        inner-result (when (fn? outer-result)
+                       (ratom/run-in-reaction #(apply outer-result args)
+                                              inner-reaction-ctx
+                                              "reaction"
+                                              (partial on-react! inner-render-fn)
+                                              {:no-cache true}))
+        default-render-fn (or inner-render-fn outer-render-fn)
+        result (or inner-result outer-result)
+        node ^Node (->node scene parent key (with-meta [:object result] original-meta))]
+    (when inner-render-fn
+      (set! (.-forceReplace outer-reaction-ctx) true))
     (set! (.-originalFn node) f)
-    (set! (.-render node) final-fn)
+    (set! (.-defaultRenderFn node) default-render-fn)
     (set! (.-form node) form)
-    (set! (.-renderedForm node) result)
-    (when-let [reaction (.-reaction reaction-ctx)]
-      (set! (.-scene reaction-ctx) scene)
-      (set! (.-node reaction-ctx) node)
-      (set! (.-reaction node) reaction))
+    (set! (.-lastForm node) form)
+    (set! (.-reactions node) (array))
+    (when-let [reaction (.-reaction outer-reaction-ctx)]
+      (set! (.-scene outer-reaction-ctx) scene)
+      (set! (.-node outer-reaction-ctx) node)
+      (.push (.-reactions node) reaction))
+    (when-let [reaction (.-reaction inner-reaction-ctx)]
+      (set! (.-scene inner-reaction-ctx) scene)
+      (set! (.-node inner-reaction-ctx) node)
+      (.push (.-reactions node) reaction))
     node))
 
 (defn- form->form-type [[l & r]]
@@ -167,12 +187,13 @@
      :data (node-data comp-key comp-config)
      :form form
      :children-keys (map-indexed #(vector (or (:key (meta %2)) %1) %2)
-                                children)}))
+                                 children)}))
 
 (defn- dispose-node! [^Node node]
   (set! (.-disposed node) true)
-  (when-let [reaction (.-reaction node)]
-    (ratom/dispose! reaction))
+  (when-let [reactions (.-reactions node)]
+    (doseq [r reactions]
+      (ratom/dispose! r)))
   (.for-each-child node dispose-node!))
 
 (defn- add-node! [^Scene scene ^Node parent-node key form changelog]
@@ -199,71 +220,75 @@
          (not= original-fn (first new-form)))))
 
 (defn- same-args? [^Node node new-form]
-  (= (.-form node)
+  (= (.-lastForm node)
      new-form))
 
-(defn- update-node! [^Scene scene ^Node node new-form changelog invoked-from-parent?]
+(declare update-node!)
+
+(defn- update-child-node! [^Scene scene ^Node node new-form changelog]
   (if (diff-fn? node new-form)
     ;; Completely different render function, replace
-    (do
-      (set! (.-dirty node) false)
-      (replace-node! scene node new-form changelog))
-    ;; Same render function, try to update in-place
-    (when (or (not invoked-from-parent?)
-              (not (same-args? node new-form)))
-      (set! (.-dirty node) false)
-      (let [render-fn (.-render node)
-            new-type (form->form-type new-form)
-            rendered-form (if (and render-fn (= :fn new-type))
-                            (apply render-fn (rest new-form))
-                            new-form)
-            old-form (.-renderedForm node)]
-        (when (not= rendered-form old-form)
-          (let [key (.-key node)
-                children (.-children node)
-                old-data (.-data node)
-                shallow-node (->node-shallow key rendered-form)
-                new-data (:data shallow-node)
-                current-keys (set (es6-iterator-seq (.keys children)))
-                new-keys (set (map first (:children-keys shallow-node)))
-                dropped-keys (clojure.set/difference current-keys new-keys)]
-            (set! (.-data node) new-data)
-            (set! (.-meta node) (meta rendered-form))
-            (when (= :fn new-type)
-              (let [invocation (if render-fn
-                                 (into [(.-originalFn node)] (rest new-form))
-                                 new-form)]
-                (set! (.-form node) invocation)))
-            (set! (.-renderedForm node) new-form)
-            (.push changelog [node :update old-data new-data])
-            ;; Remove children that no longer exist
-            (doseq [child-key dropped-keys]
-              (let [child-node (.get children child-key)]
-                (remove-node! child-node changelog))
-              (.delete children child-key))
-            ;; Update existing children and add new children
-            (doseq [[child-key child-form] (:children-keys shallow-node)]
-              (if-let [child (.get children child-key)]
-                ;; Update existing child
-                (update-node! scene child child-form changelog true)
-                ;; Add new child
-                (when-let [child-node (add-node! scene node child-key child-form changelog)]
-                  (.set children child-key child-node))))))))))
+    (replace-node! scene node new-form changelog)
+    ;; Same form, re-render using the default render-fn
+    (let [render-fn (.-defaultRenderFn node)]
+      (update-node! scene node new-form render-fn changelog false))))
 
-(defn- render-node! [^Scene scene ^Node node changelog]
-  (let [form (.-form node)]
-    (update-node! scene node form changelog false)))
+(defn- update-node! [^Scene scene ^Node node new-form ^js render-fn changelog force-rerender?]
+  (when (or force-rerender?
+            (not (same-args? node new-form)))
+    (let [key (.-key node)
+          children (.-children node)
+          old-data (.-data node)
+          rendered-form (if render-fn
+                          (apply render-fn (rest new-form))
+                          new-form)
+          shallow-node (->node-shallow key rendered-form)
+          new-data (:data shallow-node)
+          current-keys (set (es6-iterator-seq (.keys children)))
+          new-keys (set (map first (:children-keys shallow-node)))
+          dropped-keys (clojure.set/difference current-keys new-keys)]
+      (set! (.-data node) new-data)
+      (set! (.-meta node) (meta new-form))
+      (set! (.-lastForm node) new-form)
+      (.push changelog [node :update old-data new-data])
+      ;; Remove children that no longer exist
+      (doseq [child-key dropped-keys]
+        (let [child-node (.get children child-key)]
+          (remove-node! child-node changelog))
+        (.delete children child-key))
+      ;; Update existing children and add new children
+      (doseq [[child-key child-form] (:children-keys shallow-node)]
+        (if-let [child (.get children child-key)]
+          ;; Update existing child
+          (update-child-node! scene child child-form changelog)
+          ;; Add new child
+          (when-let [child-node (add-node! scene node child-key child-form changelog)]
+            (.set children child-key child-node)))))))
+
+(defn- render-node! [^Scene scene ^Node node ^js render-fn force-replace? changelog]
+  (let [new-form (.-form node)]
+    (if (or force-replace?
+            (diff-fn? node new-form))
+      (do
+        (set! (.-dirty node) false)
+        ;; Completely different render function, replace
+        (replace-node! scene node new-form changelog))
+      ;; Same function, re-render using the supplied render-fn
+      (do
+        (set! (.-dirty node) false)
+        (update-node! scene node new-form render-fn changelog true)))))
 
 (defn render! [^Scene scene changelog]
   (reagent/flush)
   (let [queue (.-renderQueue scene)]
-    (loop [node ^Node (.dequeue queue)]
-      (when node
-        (do
-          (when (and (.-dirty node)
-                     (not (.-disposed node)))
-            (render-node! scene node changelog))
-          (recur ^Node (.dequeue queue)))))))
+    (loop [entry ^RenderQueueEntry (.dequeue queue)]
+      (when entry
+        (when-let [node ^Node (.-node entry)]
+          (do
+            (when (and (.-dirty node)
+                       (not (.-disposed node)))
+              (render-node! scene node (.-renderFn entry) (.-forceReplace entry) changelog))
+            (recur ^RenderQueueEntry (.dequeue queue))))))))
 
 (defn destroy! [^Scene scene]
   (dispose-node! (.-root scene)))
