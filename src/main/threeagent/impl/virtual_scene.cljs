@@ -285,8 +285,7 @@
       (when entry
         (when-let [node ^Node (.-node entry)]
           (do
-            (when (and (.-dirty node)
-                       (not (.-disposed node)))
+            (when-not (.-disposed node)
               (render-node! scene node (.-renderFn entry) (.-forceReplace entry) changelog))
             (recur ^RenderQueueEntry (.dequeue queue))))))))
 
