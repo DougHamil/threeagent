@@ -7,23 +7,24 @@
   [:box])
 
 (defn parent-component [state]
+  ^{:key "PARENT_INNER"}
   [:object
    (for [child (:children @state)]
      ^{:key child}
      [child-component state child])])
 
 (defn root [state]
+  ^{:key "ROOT"}
   [:object
-   [parent-component state :entity]])
+    ^{:key "PARENT"}
+    [parent-component state :entity]])
 
 (deftest delete-child-with-key-test
   (testing "Deleting a child key should safely remove that child from the parent"
-    (let [test-state (th/atom {:children #{:a :b}})
+    (let [test-state (th/atom {:children #{"a" "b"}})
           scene (vscene/create (partial root test-state))
           changelog (array)]
-      (is (= 2 (.-size (.-children (vscene/get-in-scene scene [0 0 0])))))
-      ;; Remove a child
-      (swap! test-state update-in [:children] disj :a)
+      (is (= 2 (.-size (.-children (vscene/get-in-scene scene [0 "ROOT" "PARENT" "PARENT_INNER" 0])))))
+      (swap! test-state update-in [:children] disj "a")
       (vscene/render! scene changelog)
-      (is (= 1 (.-size (.-children (vscene/get-in-scene scene [0 0 0]))))))))
-
+      (is (= 1 (.-size (.-children (vscene/get-in-scene scene [0 "ROOT" "PARENT" "PARENT_INNER" 0]))))))))

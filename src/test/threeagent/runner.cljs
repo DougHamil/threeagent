@@ -6,7 +6,8 @@
             [threeagent.virtual-scene-test]
             [threeagent.edge-case-test]
             [threeagent.parent-transform-update-test]
-            [threeagent.delete-child-with-key-test]))
+            [threeagent.delete-child-with-key-test]
+            [threeagent.metadata-on-fn-component-test]))
 
 (enable-console-print!)
 

@@ -21,16 +21,16 @@
     (let [test-state (th/atom [])
           scene (vscene/create (partial root test-state))
           changelog (array)
-          before (.-data (vscene/get-in-scene scene [0 0]))]
-        (swap! test-state conj {:value true})
-        (vscene/render! scene changelog)
-        (is (vscene/get-in-scene scene [0 0 0]))
-        (let [after (.-data (vscene/get-in-scene scene [0 0 0]))]
-          (is (= :object (:component-key before)))
-          (is (= :box (:component-key after))))
-        (reset! test-state [])
-        (vscene/render! scene changelog)
-        (let [after (.-data (vscene/get-in-scene scene [0 0]))]
-          (is (= :object (:component-key before)))
-          (is (= :object (:component-key after)))))))
+          before (.-data (vscene/get-in-scene scene [0 0 0 0]))]
+      (swap! test-state conj {:value true})
+      (vscene/render! scene changelog)
+      (is (vscene/get-in-scene scene [0 0 0]))
+      (let [after (.-data (vscene/get-in-scene scene [0 0 0 0 0 0]))]
+        (is (= :object (:component-key before)))
+        (is (= :box (:component-key after))))
+      (reset! test-state [])
+      (vscene/render! scene changelog)
+      (let [after (.-data (vscene/get-in-scene scene [0 0]))]
+        (is (= :object (:component-key before)))
+        (is (= :object (:component-key after)))))))
 

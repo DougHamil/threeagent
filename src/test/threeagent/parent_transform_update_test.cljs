@@ -12,7 +12,9 @@
 
 (defn parent-component [state entity-key]
   (let [position @(th/cursor state [entity-key :position])]
+    ^{:key "THIS-PARENT"}
     [:object {:position position}
+      ^{:key "THIS-CHILD"}
      [child-component state entity-key]]))
 
 (defn root [state]
@@ -26,6 +28,7 @@
                                         :rotation [0 0 0]}})
           scene (vscene/create (partial root test-state))
           changelog (array)]
+      (vscene/render! scene changelog)
       ;; Update just the parent component
       (swap! test-state assoc-in [:entity :position] [0 1 0])
       (vscene/render! scene changelog)

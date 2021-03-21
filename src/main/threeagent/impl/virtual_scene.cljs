@@ -52,15 +52,15 @@
 
 (defn get-in-scene [^Scene scene path] (get-in-node (.-root scene) (rest path)))
 
-(defn- eval-fn [f args]
+(defn- eval-fn [original-meta f args]
   (let [result (apply f args)]
     (if (fn? result)
-      (recur result args)
-      (if (fn? (first result))
-        [(fn []
-           [:object (f)])
-         [:object result]]
-        [f result]))))
+      (recur original-meta result args)
+      ^{:__origfn f}
+      [(fn re-render [& args]
+          (with-meta [:object (apply f args)]
+            original-meta))
+       result])))
 
 (defn- on-react! [ctx]
   (let [node ^Node (.-node ctx)
@@ -118,8 +118,12 @@
   (let [key (or (:key (meta form)) key)
         [f & args] form
         reaction-ctx ^js (clj->js {:node nil :reaction nil})
-        [final-fn result] (ratom/run-in-reaction #(eval-fn f args) reaction-ctx "reaction" on-react! {:no-cache true})
-        node ^Node (->node scene parent key result)]
+        [final-fn result] (ratom/run-in-reaction #(eval-fn (meta form) f args)
+                                                 reaction-ctx
+                                                 "reaction"
+                                                 on-react!
+                                                 {:no-cache true})
+        node ^Node (->node scene parent key (with-meta [:object result] (meta form)))]
     (set! (.-originalFn node) f)
     (set! (.-render node) final-fn)
     (set! (.-form node) form)
@@ -205,8 +209,8 @@
       (set! (.-dirty node) false)
       (replace-node! scene node new-form changelog))
     ;; Same render function, try to update in-place
-    (when  (or (not invoked-from-parent?)
-               (not (same-args? node new-form)))
+    (when (or (not invoked-from-parent?)
+              (not (same-args? node new-form)))
       (set! (.-dirty node) false)
       (let [render-fn (.-render node)
             new-type (form->form-type new-form)
@@ -224,9 +228,10 @@
                 new-keys (set (map first (:children-keys shallow-node)))
                 dropped-keys (clojure.set/difference current-keys new-keys)]
             (set! (.-data node) new-data)
+            (set! (.-meta node) (meta rendered-form))
             (when (= :fn new-type)
               (let [invocation (if render-fn
-                                 (into [render-fn] (rest new-form))
+                                 (into [(.-originalFn node)] (rest new-form))
                                  new-form)]
                 (set! (.-form node) invocation)))
             (set! (.-renderedForm node) new-form)
