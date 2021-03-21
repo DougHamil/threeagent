@@ -260,7 +260,8 @@
     (loop [node ^Node (.dequeue queue)]
       (when node
         (do
-          (when (.-dirty node)
+          (when (and (.-dirty node)
+                     (not (.-disposed node)))
             (render-node! scene node changelog))
           (recur ^Node (.dequeue queue)))))))
 
