@@ -41,7 +41,7 @@ For [lein-cljsbuild](https://github.com/emezeske/lein-cljsbuild), add an npm-dep
   [:box {:width size
          :height size
          :depth size
-         :material {:color color}])
+         :material {:color color}}])
          
 ;; Form-2 component example
 (defn growing-sphere []
