@@ -28,7 +28,7 @@ For [lein-cljsbuild](https://github.com/emezeske/lein-cljsbuild), add an npm-dep
 ## Example
 ```clojure
 (ns my-app.core
-  (:require [threeagent.alpha.core :as th]))
+  (:require [threeagent.core :as th]))
   
 ;; Use reactive atom for storing state
 (defonce state (th/atom {:ticks 0}))
@@ -41,7 +41,7 @@ For [lein-cljsbuild](https://github.com/emezeske/lein-cljsbuild), add an npm-dep
   [:box {:width size
          :height size
          :depth size
-         :material {:color color}])
+         :material {:color color}}])
          
 ;; Form-2 component example
 (defn growing-sphere []
@@ -140,7 +140,7 @@ The `defcomponent` macro is used to build a function that will receive the compo
 For example, if we wanted the ability to place custom 3D models in our scene, we could define our own `:model` component:
 ```clojure
 (ns example.core
-  (:require-macros [threeagent.alpha.macros :refer [defcomponent]]))
+  (:require-macros [threeagent.macros :refer [defcomponent]]))
 
 (defcomponent :model [config]
   (let [type (:model-type config)
