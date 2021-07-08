@@ -54,6 +54,7 @@ For [lein-cljsbuild](https://github.com/emezeske/lein-cljsbuild), add an npm-dep
 (defn root []
   [:object {:position [1.0 0 -4.0]
             :rotation [0 (js/Math.sin (:ticks @state)) 0]}
+    [:ambient-light {:intensity 0.8}]
     [color-box "red" 1.0] ; Don't forget to use square brackets!
     [growing-sphere]])
            
