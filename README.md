@@ -48,6 +48,7 @@ For lein-cljsbuild, add an npm-deps entry on THREE.js:
 (defn root []
   [:object {:position [1.0 0 -4.0]
             :rotation [0 (.sin js/Math (:ticks @state)) 0]} ; Rotate on Y axis based on :ticks
+    [:ambient-light {:intensity 0.8}]
     [color-box "red" 1.0] ; Don't forget to use square brackets!
     [growing-sphere]])
            
