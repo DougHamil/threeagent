@@ -122,13 +122,5 @@ workflows:
           filters:
             branches:
               only: /^release$/
-          type: approval
-          requires:
-            - hold
-
-      - release:
-          filters:
-            branches:
-              only: /^release$/
           requires:
             - hold
