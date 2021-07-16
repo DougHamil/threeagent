@@ -66,5 +66,16 @@
                         :asset-path "js/out"
                         :aot-cache false
                         :install-deps true
-                        :npm-deps {:three "0.118.0"}}}]})
-                        
+                        :npm-deps {:three "0.118.0"}}}]
+
+   :release-tasks [["vcs" "assert-committed"]
+                   ["change" "version" "leiningen.release/bump-version" "release"]
+                   ["shell" "git" "commit" "-am" "Version ${:version} [ci skip]"]
+                   ["vcs" "tag" "v" "--no-sign"]
+                   ["deploy"]
+                   ["change" "version" "leiningen.release/bump-version"]
+                   ["shell" "git" "commit" "-am" "Version ${:version} [ci skip]"]
+                   ["shell" "git" "checkout" "main"]
+                   ["shell" "git" "merge" "release"]
+                   ["vcs" "push"]]})                       
+  
