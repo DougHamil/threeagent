@@ -22,7 +22,8 @@
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-doo "0.1.10"]
-            [lein-figwheel "0.5.19"]]
+            [lein-figwheel "0.5.19"]
+            [lein-shell "0.5.0"]]
 
   :profiles {:dev {:dependencies [[org.clojure/clojurescript "1.10.520"]
                                   [cider/cider-nrepl "0.20.1-SNAPSHOT"]
