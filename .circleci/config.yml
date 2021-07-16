@@ -83,7 +83,7 @@ jobs:
             git config --global user.name "CircleCI Release Script"
             git config --global user.signingkey C89350FC
             git remote set-url origin https://github.com/DougHamil/threeagent.git
-            git branch -u upstream/main
+            git branch -u origin/main
       - run:
           name: Release rc
           command: lein release :patch
