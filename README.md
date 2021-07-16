@@ -1,5 +1,5 @@
 # threeagent
-[![CircleCI](https://circleci.com/gh/DougHamil/threeagent/tree/master.svg?style=svg)](https://circleci.com/gh/DougHamil/threeagent/tree/master)
+[![CircleCI](https://circleci.com/gh/DougHamil/threeagent/tree/main.svg?style=svg)](https://circleci.com/gh/DougHamil/threeagent/tree/main)
 
 ClojureScript library for building Three.js apps in a reagent-like fashion
 
@@ -48,6 +48,7 @@ For lein-cljsbuild, add an npm-deps entry on THREE.js:
 (defn root []
   [:object {:position [1.0 0 -4.0]
             :rotation [0 (.sin js/Math (:ticks @state)) 0]} ; Rotate on Y axis based on :ticks
+    [:ambient-light {:intensity 0.8}]
     [color-box "red" 1.0] ; Don't forget to use square brackets!
     [growing-sphere]])
            
@@ -56,16 +57,24 @@ For lein-cljsbuild, add an npm-deps entry on THREE.js:
 (defonce scene (th/render root (.-body js/document)))
 ```
 
-[More example projects](https://github.com/DougHamil/threeagent-examples)
+## Documentation
 
-## Usage
+Please see https://doughamil.github.io/threeagent for the full documentation.
 
-### Share state with Reagent
+## Example Projects
 
-### Custom Components
-`defrenderer`
+As a demonstration of the capabilities as well as for reference, please see [these example projects](https://github.com/DougHamil/threeagent-examples)
 
-### THREE.js Object Instances
-`:instance component`
+## Development
 
-### WebVR Support
+### Running Tests
+Use shadow-cljs to watch unit tests
+
+```bash
+npx shadow-cljs watch test
+```
+
+Navigate to the HTTP server that shadow-cljs creates to view the test results
+
+
+
