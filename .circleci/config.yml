@@ -70,23 +70,24 @@ jobs:
   release:
     executor: my-executor
     steps:
-      - checkout
       - add_ssh_keys:
           fingerprints:
-            - "05:a7:54:63:4e:af:8f:6f:27:4c:57:26:50:a9:5e:00"
+            - "04:0f:c2:c2:05:9e:ba:ea:eb:73:ac:54:ad:3f:2e:40"
+      - checkout
       - run:
           command: echo -e "$GPG_KEY" | gpg --import
       - run:
-          command: |
-            git config --global user.email "circleci@circleci"
-            git config --global user.name "Release Script"
-            git config --global user.signingkey C89350FC
-            git push --set-upstream origin ${CIRCLE_BRANCH}
-            git remote set-url origin https://github.com/DougHamil/threeagent.git
-
-      - run:
           name: Release rc
           command: lein release :patch
+      - run:
+          command: |
+            git config --global user.email "doug.hamil@gmail.com"
+            git config --global user.name "CircleCI Release Script"
+            git config --global user.signingkey C89350FC
+            git checkout main
+            git remote set-url origin https://github.com/DougHamil/threeagent.git
+            git commit -am "post-release version bump"
+            git push --set-upstream origin ${CIRCLE_BRANCH}
 
 workflows:
   build-test-deploy:
@@ -124,5 +125,3 @@ workflows:
               only: /^release$/
           requires:
             - hold
-            - test
-            - render_test
