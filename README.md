@@ -189,85 +189,85 @@ The value `:object` will be directly injected into the scene graph at this compo
 
 ### `:box`
 
-Properties: `:width` `:height` `:depth` `:width-segments` `:height-segments` `:depth-segments` `:material`
+Properties: `:width` `:height` `:depth` `:width-segments` `:height-segments` `:depth-segments` `:material` `:cast-shadow` `:receive-shadow`
 
 Corresponds to BoxGeometry
 
 ### `:plane`
 
-Properties: `:width` `:height` `:width-segments` `:height-segments` `:material`
+Properties: `:width` `:height` `:width-segments` `:height-segments` `:material` `:cast-shadow` `:receive-shadow`
 
 Corresponds to PlaneGeometry
 
 ### `:sphere`
 
-Properties: `:radius` `:phi-start` `:phi-length` `:theta-start` `:theta-length` `:width-segments` `:height-segments` `:material`
+Properties: `:radius` `:phi-start` `:phi-length` `:theta-start` `:theta-length` `:width-segments` `:height-segments` `:material` `:cast-shadow` `:receive-shadow`
 
 Corresponds to SphereGeometry
 
 ### `:cylinder`
 
-Properties: `:radius-top` `:radius-bottom` `:height` `:radial-segments` `:height-segments` `:open-ended?` `:theta-start` `:theta-length` `:material`
+Properties: `:radius-top` `:radius-bottom` `:height` `:radial-segments` `:height-segments` `:open-ended?` `:theta-start` `:theta-length` `:material` `:cast-shadow` `:receive-shadow`
 
 Corresponds to CylinderGeometry
 
 ### `:circle`
 
-Properties: `:radius` `:segments` `:theta-start` `:theta-length` `:material`
+Properties: `:radius` `:segments` `:theta-start` `:theta-length` `:material` `:cast-shadow` `:receive-shadow`
 
 Corresponds to CircleGeometry
 
 ### `:cone`
 
-Properties: `:radius` `:height` `:radial-segments` `:height-segments` `:open-ended?` `:theta-start` `:theta-length` `:material`
+Properties: `:radius` `:height` `:radial-segments` `:height-segments` `:open-ended?` `:theta-start` `:theta-length` `:material` `:cast-shadow` `:receive-shadow`
 
 Corresponds to ConeGeometry
 
 ### `:dodecahedron`
 
-Properties: `:radius` `:detail` `:material`
+Properties: `:radius` `:detail` `:material` `:cast-shadow` `:receive-shadow`
 
 Corresponds to DodecahedronGeometry
 
 ### `:icosahedron`
 
-Properties: `:radius` `:detail` `:material`
+Properties: `:radius` `:detail` `:material` `:cast-shadow` `:receive-shadow`
 
 Corresponds to IcosahedronGeometry
 
 ### `:octahedron`
 
-Properties: `:radius` `:detail` `:material`
+Properties: `:radius` `:detail` `:material` `:cast-shadow` `:receive-shadow`
 
 Corresponds to OctahedronGeometry
 
 ### `:tetrahedron`
 
-Properties: `:radius` `:detail` `:material`
+Properties: `:radius` `:detail` `:material` `:cast-shadow` `:receive-shadow`
 
 Corresponds to TetrahedronGeometry
 
 ### `:ring`
 
-Properties: `:inner-radius` `:outer-radius` `:theta-segments` `:phi-segments` `:theta-start` `:theta-length` `:material`
+Properties: `:inner-radius` `:outer-radius` `:theta-segments` `:phi-segments` `:theta-start` `:theta-length` `:material` `:cast-shadow` `:receive-shadow`
 
 Corresponds to RingGeometry
 
 ### `:torus`
 
-Properties: `:radius` `:tube` `:radial-segments` `:tubular-segments` `:arc` `:material`
+Properties: `:radius` `:tube` `:radial-segments` `:tubular-segments` `:arc` `:material` `:cast-shadow` `:receive-shadow`
 
 Corresponds to TorusGeometry
 
 ### `:torus-knot`
 
-Properties: `:radius` `:tube` `:radial-segments` `:tubular-segments` `:p` `:q` `:material`
+Properties: `:radius` `:tube` `:radial-segments` `:tubular-segments` `:p` `:q` `:material` `:cast-shadow` `:receive-shadow`
 
 Corresponds to TorusKnotGeometry
 
 ### `:shape`
 
-Properties: `:shape` `:material`
+Properties: `:shape` `:material` `:cast-shadow` `:receive-shadow`
 
 Where `:shape` is a valid THREE.js Shape.
 
@@ -283,9 +283,15 @@ Corresponds to AmbientLight
 
 ### `:point-light`
 
-Properties: `:color` `:intensity` `:distance` `:decay`
+Properties: `:color` `:intensity` `:distance` `:decay` `:cast-shadow` `:shadow`
 
 Corresponds to PointLight
+
+### `:directional-light`
+
+Properties: `:color` `:intensity` `:cast-shadow` `:shadow`
+
+Corresponds to DirectionalLight
 
 ### `:hemisphere-light`
 
@@ -301,7 +307,7 @@ Corresponds to RectAreaLight
 
 ### `:spot-light`
 
-Properties: `:color` `:intensity` `:distance` `:angle` `:penumbra` `:decay`
+Properties: `:color` `:intensity` `:distance` `:angle` `:penumbra` `:decay` `:cast-shadow` `shadow`
 
 Corresponds to SpotLight
 
@@ -321,6 +327,34 @@ Corresponds to OrthographicCamera
 
 
 # Tips and Tricks
+
+## Enabling Shadows
+
+To enable shadows, set the `:shadow-map` property when calling `threeagent.core/render`:
+
+```clojure
+  (th/render root (.getElementById js/document "my-canvas") {:shadow-map {:enabled true
+                                                                          :type three/PCFSoftShadowMap}}))
+```
+
+Then, configure a light to cast shadows:
+```clojure
+(defn lights []
+  [:object
+    [:ambient-light {:intensity 0.5}]
+    [:directional-light {:cast-shadow true}]])
+```
+
+Use the `:cast-shadow` and `:receive-shadow` on the built-in geometry components to control shadows:
+```clojure
+(defn geometry []
+  [:object
+    [:box {:cast-shadow true
+           :receive-shadow true}]
+    [:plane {:cast-shadow false
+             :receive-shadow true
+             :position [0 -1 0}]]])
+```
 
 ## Sharing State with Reagent
 
