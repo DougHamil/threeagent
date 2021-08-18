@@ -178,8 +178,14 @@
     (let [c (.createElement js/document "canvas")]
       (.appendChild dom-root c))))
 
+(defn- set-shadow-map! [renderer shadow-map]
+  (when shadow-map
+    (let [sm ^js (.-shadowMap renderer)]
+      (set! (.-enabled sm) (:enabled shadow-map))
+      (set! (.-type sm) (or (:type shadow-map)
+                            three/PCFShadowMap)))))
 
-(defn- ^Context create-context [root-fn dom-root on-before-render-cb on-after-render-cb]
+(defn- ^Context create-context [root-fn dom-root on-before-render-cb on-after-render-cb shadow-map]
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
@@ -189,26 +195,29 @@
         cameras (array)
         scene-root (new three/Scene)
         clock (new three/Clock)]
-      (.setSize renderer width height)
-      (let [context (Context. virtual-scene
-                                   scene-root
-                                   dom-root nil
-                                   canvas camera cameras
-                                   clock renderer on-before-render-cb on-after-render-cb)]
-        (set! (.-animateFn context) #(animate context))
-        (init-scene context virtual-scene scene-root)
-        (.push contexts context)
-        context)))
+    (.setSize renderer width height)
+    (set-shadow-map! renderer shadow-map)
+    (let [context (Context. virtual-scene
+                                 scene-root
+                                 dom-root nil
+                                 canvas camera cameras
+                                 clock renderer on-before-render-cb on-after-render-cb)]
+      (set! (.-animateFn context) #(animate context))
+      (init-scene context virtual-scene scene-root)
+      (.push contexts context)
+      context)))
 
 (defn- remove-all-children! [^Context context ^vscene/Node vscene-root]
   (.for-each-child vscene-root (partial remove-node! context)))
 
-(defn- reset-context! [^Context context root-fn {:keys [on-before-render on-after-render]}]
+(defn- reset-context! [^Context context root-fn {:keys [on-before-render on-after-render shadow-map]}]
   (let [scene-root ^js (.-sceneRoot context)
         virtual-scene ^vscene/Scene (.-virtualScene context)
-        new-virtual-scene (vscene/create root-fn)]
+        new-virtual-scene (vscene/create root-fn)
+        renderer ^js (.-renderer context)]
     (remove-all-children! context (.-root virtual-scene))
     (vscene/destroy! virtual-scene)
+    (set-shadow-map! renderer shadow-map)
     (set! (.-cameras context) (array))
     (init-scene context new-virtual-scene scene-root)
     (set! (.-virtualScene context) new-virtual-scene)
@@ -220,11 +229,13 @@
   (first (filter #(= (.-domRoot ^js %) dom-root) contexts)))
 
 (defn ^Context render [root-fn
-                            dom-root
-                            {:keys [on-before-render on-after-render] :as config}]
+                       dom-root
+                       {:keys [on-before-render
+                               on-after-render
+                               shadow-map] :as config}]
   (if-let [existing-context (find-context dom-root)]
     (reset-context! existing-context root-fn config)
-    (let [context (create-context root-fn dom-root on-before-render on-after-render)
+    (let [context (create-context root-fn dom-root on-before-render on-after-render shadow-map)
           renderer ^js (.-renderer context)]
       (.setAnimationLoop renderer (.-animateFn context))
       context)))
