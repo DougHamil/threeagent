@@ -25,9 +25,12 @@
     config
     (cached-material config)))
 
-(defn- to-mesh [geo material-config]
-  (let [mat (->material material-config)]
-    (threejs/mesh geo mat)))
+(defn- to-mesh [geo material-config cast-shadow receive-shadow]
+  (let [mat (->material material-config)
+        mesh ^js (threejs/mesh geo mat)]
+    (set! (.-castShadow mesh) cast-shadow)
+    (set! (.-receiveShadow mesh) receive-shadow)
+    mesh))
 
 ;; Basic
 (defcomponent :object [c] (threejs/object))
@@ -56,29 +59,39 @@
 ;; Primitives
 (defcomponent :plane [{:keys [width height
                               width-segments height-segments
+                              cast-shadow
+                              receive-shadow
                               material]
                        :or {width 1
                             height 1
                             width-segments 1
-                            height-segments 1}}]
+                            height-segments 1
+                            cast-shadow false
+                            receive-shadow false}}]
   (let [geo (three/PlaneGeometry. width height width-segments height-segments)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
 
 (defcomponent :box [{:keys [width height depth width-segments
                             height-segments depth-segments
+                            cast-shadow
+                            receive-shadow
                             material]
                      :or {width 1.0
                           height 1.0
                           depth 1.0
                           width-segments 1
                           height-segments 1
-                          depth-segments 1}}]
+                          depth-segments 1
+                          cast-shadow false
+                          receive-shadow false}}]
   (let [geo (three/BoxGeometry. width height depth
                                 width-segments height-segments depth-segments)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
     
 (defcomponent :sphere [{:keys [radius width-segments height-segments
                                phi-start phi-length theta-start theta-length
+                               cast-shadow
+                               receive-shadow
                                material]
                         :or {radius 1.0
                              width-segments 8
@@ -86,7 +99,9 @@
                              phi-start 0
                              phi-length pi-times-2
                              theta-start 0
-                             theta-length pi}}]
+                             theta-length pi
+                             cast-shadow false
+                             receive-shadow false}}]
   (let [geo (three/SphereGeometry. radius
                                    width-segments
                                    height-segments
@@ -94,16 +109,19 @@
                                    phi-length
                                    theta-start
                                    theta-length)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
 
 (defcomponent :cylinder [{:keys [radius-top radius-bottom height radial-segments
                                  height-segments open-ended? theta-start theta-length
+                                 cast-shadow receive-shadow
                                  material]
                           :or {radius-top 1.0
                                radius-bottom 1.0
                                height 1.0
                                radial-segments 8
                                height-segments 1
+                               cast-shadow false
+                               receive-shadow false
                                theta-start 0
                                theta-length pi-times-2}}]
   (let [geo (three/CylinderGeometry. radius-top 
@@ -114,23 +132,29 @@
                                      open-ended?
                                      theta-start
                                      theta-length)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
 
-(defcomponent :circle [{:keys [radius segments theta-start theta-length material]
+(defcomponent :circle [{:keys [radius segments theta-start theta-length material
+                               cast-shadow receive-shadow]
                         :or {radius 1.0
                              segments 8
+                             cast-shadow false
+                             receive-shadow false
                              theta-start 0
                              theta-length pi-times-2}}]
   (let [geo (three/CircleGeometry. radius
                                    segments
                                    theta-start
                                    theta-length)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
 
 (defcomponent :cone [{:keys [radius height radial-segments height-segments
-                             open-ended? theta-start theta-length material]
+                             open-ended? theta-start theta-length material
+                             cast-shadow receive-shadow]
                       :or {radius 1.0
                            height 1.0
+                           cast-shadow false
+                           receive-shadow false
                            radial-segments 8
                            height-segments 1
                            theta-start 0
@@ -139,86 +163,130 @@
                                  radial-segments height-segments
                                  open-ended?
                                  theta-start theta-length)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
 
-(defcomponent :dodecahedron [{:keys [radius detail material]
+(defcomponent :dodecahedron [{:keys [radius detail material
+                                     cast-shadow receive-shadow]
                               :or {radius 1.0
+                                   cast-shadow false
+                                   receive-shadow false
                                    detail 0}}]
   (let [geo (three/DodecahedronGeometry. radius detail)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
 
-(defcomponent :icosahedron [{:keys [radius detail material]
+(defcomponent :icosahedron [{:keys [radius detail material
+                                    cast-shadow receive-shadow]
                              :or {radius 1.0
+                                  cast-shadow false
+                                  receive-shadow false
                                   detail 0}}]
   (let [geo (three/IcosahedronGeometry. radius detail)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
 
-(defcomponent :octahedron [{:keys [radius detail material]
+(defcomponent :octahedron [{:keys [radius detail material
+                                   cast-shadow receive-shadow]
                             :or {radius 1.0
+                                 cast-shadow false
+                                 receive-shadow false
                                  detail 0}}]
   (let [geo (three/OctahedronGeometry. radius detail)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
 
 (defcomponent :ring [{:keys [inner-radius outer-radius
                              theta-segments phi-segments
                              theta-start theta-length
+                             cast-shadow receive-shadow
                              material]
                       :or {inner-radius 0.5
                            outer-radius 1.0
                            theta-segments 8
                            phi-segments 8
+                           cast-shadow false
+                           receive-shadow false
                            theta-start 0
                            theta-length pi-times-2}}]
                            
   (let [geo (three/RingGeometry. inner-radius outer-radius
                                  theta-segments phi-segments
                                  theta-start theta-length)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
 
-(defcomponent :tetrahedron [{:keys [radius detail material]
+(defcomponent :tetrahedron [{:keys [radius detail material
+                                    cast-shadow receive-shadow]
                              :or {radius 1.0
+                                  cast-shadow false
+                                  receive-shadow false
                                   detail 0}}]
   (let [geo (three/TetrahedronGeometry. radius detail)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
 
 (defcomponent :torus [{:keys [radius tube radial-segments tubular-segments arc
-                              material]
+                              material cast-shadow receive-shadow]
                        :or {radius 1.0
                             tube 0.4
+                            cast-shadow false
+                            receive-shadow false
                             radial-segments 8
                             tubular-segments 6
                             arc pi-times-2}}]
   (let [geo (three/TorusGeometry. radius tube radial-segments tubular-segments arc)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
 
 (defcomponent :torus-knot [{:keys [radius tube tubular-segments radial-segments p q
-                                   material]
+                                   material cast-shadow receive-shadow]
                             :or {radius 1.0
                                  tube 0.4
                                  tubular-segments 64
                                  radial-segments 8
+                                 cast-shadow false
+                                 receive-shadow false
                                  p 2
                                  q 3}}]
   (let [geo (three/TorusKnotGeometry. radius tube tubular-segments radial-segments p q)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
 
-(defcomponent :shape [{:keys [shape material]}]
+(defcomponent :shape [{:keys [shape material cast-shadow receive-shadow]}]
   (let [geo (three/ShapeGeometry. shape)]
-    (to-mesh geo material)))
+    (to-mesh geo material cast-shadow receive-shadow)))
 
 
 ;; Lights
+(def ^:private default-light-shadow {:map-size {:width 512
+                                                :height 512}
+                                     :focus 1.0
+                                     :camera {:near 0.5
+                                              :far 500}})
+(defn- apply-shadow-settings [light cast-shadow shadow-cfg]
+  (set! (.-castShadow light) cast-shadow)
+  (when cast-shadow
+    (let [shadow (.-shadow light)
+          map-size (merge (:map-size default-light-shadow)
+                          (:map-size shadow-cfg))
+          camera (merge (:camera default-light-shadow)
+                        (:camera shadow-cfg))]
+      (set! (.-width (.-mapSize shadow)) (:width map-size))
+      (set! (.-height (.-mapSize shadow)) (:height map-size))
+      (set! (.-near (.-camera shadow)) (:near camera))
+      (set! (.-far (.-camera shadow)) (:far camera))
+      (set! (.-focus shadow) (or (:focus shadow-cfg)
+                                 (:focus default-light-shadow)))))
+  light)
+
 (defcomponent :ambient-light [{:keys [color intensity]
                                :or {color 0xFFFFFF
                                     intensity 1.0}}]
   (three/AmbientLight. color intensity))
 
-(defcomponent :point-light [{:keys [color intensity distance decay]
+(defcomponent :point-light [{:keys [color intensity distance decay
+                                    cast-shadow shadow]
                              :or {color 0xFFFFFF
+                                  cast-shadow false
+                                  shadow nil
                                   intensity 1.0
                                   distance 0
                                   decay 1.0}}]
-  (three/PointLight. color intensity distance decay))
+  (apply-shadow-settings (three/PointLight. color intensity distance decay)
+                         cast-shadow shadow))
 
 (defcomponent :hemisphere-light [{:keys [sky-color ground-color intensity]
                                   :or {sky-color 0xFFFFFF
@@ -226,10 +294,14 @@
                                        intensity 1}}]
   (three/HemisphereLight. sky-color ground-color intensity))
 
-(defcomponent :directional-light [{:keys [color intensity]
+(defcomponent :directional-light [{:keys [color intensity
+                                          cast-shadow shadow]
                                    :or {color 0xFFFFFF
+                                        cast-shadow false
+                                        shadow nil
                                         intensity 1.0}}]
-  (three/DirectionalLight. color intensity))
+  (apply-shadow-settings (three/DirectionalLight. color intensity)
+                         cast-shadow shadow))
 
 (defcomponent :rect-area-light [{:keys [color intensity width height]
                                  :or {color 0xFFFFFF
@@ -238,18 +310,45 @@
                                       height 10.0}}]
   (three/RectAreaLight. color intensity width height))
 
-(defcomponent :spot-light [{:keys [color intensity distance angle penumbra decay]
+(defcomponent :spot-light [{:keys [color intensity distance angle penumbra decay
+                                   shadow cast-shadow]
                             :or {color 0xFFFFFF
+                                 cast-shadow false
+                                 shadow nil
                                  intensity 1.0
                                  distance 0
                                  angle pi-over-2
                                  penumbra 0.0
                                  decay 1.0}}]
-  (three/SpotLight. color intensity distance angle penumbra decay))
+  (apply-shadow-settings (three/SpotLight. color intensity distance angle penumbra decay)
+                         cast-shadow shadow))
 
 
 ;; Text
-(defcomponent :text [{:keys [text material] :as cfg}]
-  (let [geo (threejs/text-geometry text cfg)]
-    (to-mesh geo material)))
+(defcomponent :text [{:keys [text material
+                             font size height
+                             curve-segments bevel-enabled
+                             bevel-thickness bevel-size
+                             bevel-offset bevel-segments
+                             cast-shadow receive-shadow]
+                      :or {cast-shadow false
+                           receive-shadow false
+                           size 100
+                           height 50
+                           curve-segments 12
+                           bevel-enabled false
+                           bevel-thickness 10
+                           bevel-size 8
+                           bevel-offset 0
+                           bevel-segments 3}}]
+  (let [geo (threejs/text-geometry text {:font font
+                                         :size size
+                                         :height height
+                                         :curveSegments curve-segments
+                                         :bevelEnabled bevel-enabled
+                                         :bevelThickness bevel-thickness
+                                         :bevelSize bevel-size
+                                         :bevelOffset bevel-offset
+                                         :bevelSegments bevel-segments})]
+    (to-mesh geo material cast-shadow receive-shadow)))
 
