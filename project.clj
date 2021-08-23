@@ -1,4 +1,4 @@
-(defproject doughamil/threeagent "0.0.9-SNAPSHOT"
+(defproject doughamil/threeagent "0.0.10-SNAPSHOT"
   :description "Build Three.js apps in a reagent-like fashion"
   :url "https://github.com/DougHamil/threeagent"
   :license {:name "MIT"}
@@ -73,6 +73,7 @@
                   ["change" "version" "leiningen.release/bump-version" "release"]
                   ["shell" "git" "commit" "-am" "Version ${:version} [ci skip]"]
                   ["vcs" "tag" "v" "--no-sign"]
+                  ["deploy"]
                   ["change" "version" "leiningen.release/bump-version"]
                   ["shell" "git" "commit" "-am" "Version ${:version} [ci skip]"]
                   ["shell" "git" "checkout" "main"]
