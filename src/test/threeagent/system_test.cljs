@@ -24,24 +24,24 @@
         [:object {:custom-system {:value "c"}}])]])
 
 (deftest persistent-custom-system-test
-  (th/render root (js/document.getElementById "test-root")
+  (th/render root js/document.body
               {:systems {:custom-system my-system}})
   (is (= 2 (count @sys-state)))
   ;; Ensure consistency across re-render
-  (th/render root (js/document.getElementById "test-root")
+  (th/render root js/document.body
               {:systems {:custom-system my-system}})
   (is (= 2 (count @sys-state))))
 
 (deftest renewed-system-test
   (let [sys-state (atom #{})
         my-system (->MySystem sys-state)]
-    (th/render root (js/document.getElementById "test-root")
+    (th/render root js/document.body
                 {:systems {:custom-system my-system}})
     (is (= 2 (count @sys-state)))
     (is (contains? @sys-state {:value "b"}))
     (is (contains? @sys-state {:value "a"}))
     ;; Ensure consistency across re-render
-    (th/render root (js/document.getElementById "test-root")
+    (th/render root js/document.body
                 {:systems {:custom-system my-system}})
     (is (= 2 (count @sys-state)))))
 
@@ -49,7 +49,7 @@
   (async done
    (let [sys-state (atom #{})
          my-system (->MySystem sys-state)]
-     (th/render root (js/document.getElementById "test-root")
+     (th/render root js/document.body
                 {:systems {:custom-system my-system}})
      (is (= 2 (count @sys-state)))
      (swap! state assoc :add-third? true)
