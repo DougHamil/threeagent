@@ -35,5 +35,5 @@
       (swap! test-state update :inner-value inc)
       (vscene/render! scene changelog)
       (is (= 2 @outer-render-count))
-      (is (= 3 @inner-render-count))
-      (vscene/print-tree (.-root scene)))))
+      (is (= 3 @inner-render-count)))))
+      ;(vscene/print-tree (.-root scene)))))

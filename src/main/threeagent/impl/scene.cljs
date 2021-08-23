@@ -3,23 +3,12 @@
             [threeagent.impl.util :refer [log]]
             [threeagent.impl.threejs :as threejs]
             [threeagent.impl.component :refer [render-component]]
-            ["three" :as three]
-            [cljs.core :refer [exists?]]))
+            [threeagent.impl.types :refer [Context]]
+            [threeagent.impl.system :as systems]
+            [clojure.string :as string]
+            ["three" :as three]))
 
 (defonce ^:private contexts (array))
-
-(deftype Context [^vscene/Scene virtualScene
-                       ^vscene/Node sceneRoot
-                       ^js domRoot
-                       ^js animateFn
-                       ^js canvas
-                       ^js camera
-                       ^js cameras
-                       ^js clock
-                       ^js renderer
-                       ^js beforeRenderCb
-                       ^js afterRenderCb]
-    Object)
 
 (defn- create-object [node-data]
   (let [comp-config (:component-config node-data)
@@ -31,7 +20,7 @@
     (when (:receive-shadow node-data) (threejs/set-receive-shadow! obj (:receive-shadow node-data)))
     obj))
 
-(defn- set-node-object [^Context context ^vscene/Node node node-data obj]
+(defn- set-node-object [^Context context ^vscene/Node node obj]
   (set! (.-threejs node) obj)
   (when (.-isCamera obj)
     (.push (.-cameras context) obj)))
@@ -41,22 +30,23 @@
     (let [node-data (.-data node)
           comp-config (:component-config node-data)
           obj (create-object node-data)]
-      (set-node-object context node node-data obj)
+      (set-node-object context node obj)
       (.add parent-object obj)
       (.for-each-child node (partial add-node context obj))
       (.dispatchEvent obj #js {:type "on-added"})
       (when-let [callback (:on-added (.-meta node))]
         (callback obj))
+      (systems/dispatch-on-added context (.-id obj) obj comp-config)
       obj)
     (catch :default e
-      (log "Failed to add node")
-      (log e)
-      (println node))))
+      (js/console.error "Failed to add node:")
+      (js/console.error (clj->js {:node node :error e})))))
 
 (defn- on-object-removed [^Context context ^vscene/Node node ^js obj]
   (.dispatchEvent obj #js {:type "on-removed"})
   (when-let [callback (:on-removed (.-meta node))]
     (callback obj))
+  (systems/dispatch-on-removed context (.-id obj) obj (:component-config (.-data node)))
   (when (.-isCamera obj)
     (let [cams (.-cameras context)]
       (.splice cams (.indexOf cams obj) 1))))
@@ -100,7 +90,7 @@
               children (.-children old-obj)
               new-obj (create-object new-data)]
           (on-object-removed context node old-obj)
-          (set-node-object context node new-data new-obj)
+          (set-node-object context node new-obj)
           (.remove parent-obj old-obj)
           (.add parent-obj new-obj)
           (when-not (.terminal? node)
@@ -168,12 +158,13 @@
         (if composer
           (.render composer delta-time)
           (.render renderer scene-root camera)))
-      (when after-render-cb (after-render-cb delta-time)))
+      (when after-render-cb (after-render-cb delta-time))
+      (systems/dispatch-on-tick context delta-time))
     (when stats
       (.end stats))))
 
 (defn- get-canvas [dom-root]
-  (if (= "canvas" (clojure.string/lower-case (.-tagName dom-root)))
+  (if (= "canvas" (string/lower-case (.-tagName dom-root)))
     dom-root
     (let [c (.createElement js/document "canvas")]
       (.appendChild dom-root c))))
@@ -185,7 +176,7 @@
       (set! (.-type sm) (or (:type shadow-map)
                             three/PCFShadowMap)))))
 
-(defn- ^Context create-context [root-fn dom-root on-before-render-cb on-after-render-cb shadow-map]
+(defn- ^Context create-context [root-fn dom-root on-before-render-cb on-after-render-cb shadow-map systems]
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
@@ -201,7 +192,8 @@
                                  scene-root
                                  dom-root nil
                                  canvas camera cameras
-                                 clock renderer on-before-render-cb on-after-render-cb)]
+                                 clock renderer on-before-render-cb on-after-render-cb
+                                 systems)]
       (set! (.-animateFn context) #(animate context))
       (init-scene context virtual-scene scene-root)
       (.push contexts context)
@@ -210,7 +202,7 @@
 (defn- remove-all-children! [^Context context ^vscene/Node vscene-root]
   (.for-each-child vscene-root (partial remove-node! context)))
 
-(defn- reset-context! [^Context context root-fn {:keys [on-before-render on-after-render shadow-map]}]
+(defn- reset-context! [^Context context root-fn {:keys [on-before-render on-after-render shadow-map systems]}]
   (let [scene-root ^js (.-sceneRoot context)
         virtual-scene ^vscene/Scene (.-virtualScene context)
         new-virtual-scene (vscene/create root-fn)
@@ -219,6 +211,7 @@
     (vscene/destroy! virtual-scene)
     (set-shadow-map! renderer shadow-map)
     (set! (.-cameras context) (array))
+    (set! (.-systems context) systems)
     (init-scene context new-virtual-scene scene-root)
     (set! (.-virtualScene context) new-virtual-scene)
     (set! (.-beforeRenderCb context) on-before-render)
@@ -232,10 +225,11 @@
                        dom-root
                        {:keys [on-before-render
                                on-after-render
+                               systems
                                shadow-map] :as config}]
   (if-let [existing-context (find-context dom-root)]
     (reset-context! existing-context root-fn config)
-    (let [context (create-context root-fn dom-root on-before-render on-after-render shadow-map)
+    (let [context (create-context root-fn dom-root on-before-render on-after-render shadow-map systems)
           renderer ^js (.-renderer context)]
       (.setAnimationLoop renderer (.-animateFn context))
       context)))

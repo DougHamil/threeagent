@@ -1,6 +1,6 @@
 (ns threeagent.impl.virtual-scene
-  (:require [threeagent.impl.util :refer [log]]
-            [medley.core :as medley]
+  (:require [medley.core :as medley]
+            [clojure.set :as set]
             [reagent.ratom :as ratom]
             [reagent.core :as reagent])
   (:import [goog.structs PriorityQueue]))
@@ -12,7 +12,7 @@
    (print-tree node ""))
   ([^Node node p]
    (let [is-reactive (and (some? (.-reactions node))
-                          (not (empty? (.-reactions node))))]
+                          (seq (.-reactions node)))]
      (println p "|-"
               (.-key node)
               (str "comp:" (:component-key (.-data node)))
@@ -246,7 +246,7 @@
           new-data (:data shallow-node)
           current-keys (set (es6-iterator-seq (.keys children)))
           new-keys (set (map first (:children-keys shallow-node)))
-          dropped-keys (clojure.set/difference current-keys new-keys)]
+          dropped-keys (set/difference current-keys new-keys)]
       (set! (.-data node) new-data)
       (set! (.-meta node) (meta new-form))
       (set! (.-lastForm node) new-form)
