@@ -208,11 +208,18 @@
 (defn- remove-all-children! [^Context context ^vscene/Node vscene-root]
   (.for-each-child vscene-root (partial remove-node! context)))
 
+(defn- raw-context->context [^Context raw-ctx]
+  {:threejs-renderer (.-renderer raw-ctx)
+   :threejs-scene (.-sceneRoot raw-ctx)
+   :canvas (.-canvas raw-ctx)})
+
 (defn- reset-context! [^Context context root-fn {:keys [on-before-render on-after-render shadow-map systems]}]
-  (let [scene-root ^js (.-sceneRoot context)
-        virtual-scene ^vscene/Scene (.-virtualScene context)
+  (let [scene-root        ^js (.-sceneRoot context)
+        virtual-scene     ^vscene/Scene (.-virtualScene context)
         new-virtual-scene (vscene/create root-fn)
-        renderer ^js (.-renderer context)]
+        renderer          ^js (.-renderer context)
+        old-context       (raw-context->context context)]
+    (systems/dispatch-destroy (.-systems context) old-context)
     (remove-all-children! context (.-root virtual-scene))
     (vscene/destroy! virtual-scene)
     (set-shadow-map! renderer shadow-map)
@@ -232,6 +239,8 @@
     (reset-context! existing-context root-fn config)
     (create-context root-fn dom-root config)))
 
-(defn ^Context render [root-fn dom-root config]
-  (let [ctx (create-or-reset-context root-fn dom-root config)]
-    (systems/dispatch-init ctx)))
+
+(defn render [root-fn dom-root config]
+  (let [raw-ctx ^Context (create-or-reset-context root-fn dom-root config)
+        ctx     (raw-context->context raw-ctx)]
+    (systems/dispatch-init (.-systems raw-ctx) ctx)))

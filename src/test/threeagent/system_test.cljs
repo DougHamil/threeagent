@@ -7,6 +7,8 @@
 
 (defrecord MySystem [sys-state]
   ISystem
+  (init [_ _ctx])
+  (destroy [_ _ctx])
   (on-entity-added [_ key _obj config]
     (swap! sys-state conj config))
   (on-entity-removed [_ key _obj config]

@@ -11,6 +11,17 @@
        :canvas <Canvas DOM Element>}
      ```
     ")
+  (destroy [this threeagent-context]
+    "
+     Called immediately before the threeagent context is destroyed.
+     This usually happens when `threeagent.core/render` is re-executed as part of a hot-reload.
+     `threeagent-context`: A map with the context for the threeagent instance: 
+     ```clojure
+      {:threejs-renderer <ThreeJS Renderer Instance>
+       :threejs-scene <ThreeJS Scene>
+       :canvas <Canvas DOM Element>}
+     ```
+    ")
   (on-entity-added [this key ^js threejs-obj config]
     "
      Called when a new entity is added to the scene.
