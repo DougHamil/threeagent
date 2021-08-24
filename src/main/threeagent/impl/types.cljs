@@ -2,7 +2,7 @@
   (:require [threeagent.impl.virtual-scene :as vscene]))
 
 (deftype Context [^vscene/Scene virtualScene
-                  ^vscene/Node sceneRoot
+                  ^js sceneRoot
                   ^js domRoot
                   ^js animateFn
                   ^js canvas

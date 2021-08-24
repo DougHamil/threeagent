@@ -176,7 +176,10 @@
       (set! (.-type sm) (or (:type shadow-map)
                             three/PCFShadowMap)))))
 
-(defn- ^Context create-context [root-fn dom-root on-before-render-cb on-after-render-cb shadow-map systems]
+(defn- ^Context create-context [root-fn dom-root {:keys [on-before-render
+                                                         on-after-render
+                                                         shadow-map
+                                                         systems]}]
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
@@ -192,11 +195,14 @@
                                  scene-root
                                  dom-root nil
                                  canvas camera cameras
-                                 clock renderer on-before-render-cb on-after-render-cb
+                                 clock renderer
+                                 on-before-render
+                                 on-after-render
                                  systems)]
       (set! (.-animateFn context) #(animate context))
       (init-scene context virtual-scene scene-root)
       (.push contexts context)
+      (.setAnimationLoop renderer (.-animateFn context))
       context)))
 
 (defn- remove-all-children! [^Context context ^vscene/Node vscene-root]
@@ -221,15 +227,11 @@
 (defn- find-context [dom-root]
   (first (filter #(= (.-domRoot ^js %) dom-root) contexts)))
 
-(defn ^Context render [root-fn
-                       dom-root
-                       {:keys [on-before-render
-                               on-after-render
-                               systems
-                               shadow-map] :as config}]
+(defn- create-or-reset-context [root-fn dom-root config]
   (if-let [existing-context (find-context dom-root)]
     (reset-context! existing-context root-fn config)
-    (let [context (create-context root-fn dom-root on-before-render on-after-render shadow-map systems)
-          renderer ^js (.-renderer context)]
-      (.setAnimationLoop renderer (.-animateFn context))
-      context)))
+    (create-context root-fn dom-root config)))
+
+(defn ^Context render [root-fn dom-root config]
+  (let [ctx (create-or-reset-context root-fn dom-root config)]
+    (systems/dispatch-init ctx)))

@@ -1,6 +1,7 @@
 (ns threeagent.core
   (:refer-clojure :exclude [atom])
   (:require [threeagent.impl.scene :as scene]
+            [threeagent.impl.types :refer [Context]]
             [reagent.ratom :as ratom]))
 
 (def atom ratom/atom)
@@ -19,5 +20,9 @@
    ```
   "
   ([root-fn dom-root] (render root-fn dom-root {}))
-  ([root-fn dom-root opts] (scene/render root-fn dom-root opts)))
+  ([root-fn dom-root opts]
+   (let [ctx ^Context (scene/render root-fn dom-root opts)]
+     {:threejs-renderer (.-renderer ctx)
+      :threejs-scene (.-sceneRoot ctx)
+      :canvas (.-canvas ctx)})))
 

@@ -18,3 +18,9 @@
   (doseq [[_ system] (.-systems context)]
     (system-protocol/tick system delta-time)))
   
+(defn dispatch-init [^Context context]
+  (let [ctx  {:threejs-renderer (.-renderer context)
+              :threejs-scene (.-sceneRoot context)
+              :canvas (.-canvas context)}]
+    (doseq [[_ system] (.-systems context)]
+      (system-protocol/init system ctx))))

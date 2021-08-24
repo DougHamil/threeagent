@@ -1,6 +1,16 @@
 (ns threeagent.system)
 
 (defprotocol ISystem
+  (init [this threeagent-context]
+    "
+     Called after threeagent initialization as part of `threeagent.core/render`
+     `threeagent-context`: A map with the context for the threeagent instance: 
+     ```clojure
+      {:threejs-renderer <ThreeJS Renderer Instance>
+       :threejs-scene <ThreeJS Scene>
+       :canvas <Canvas DOM Element>}
+     ```
+    ")
   (on-entity-added [this key ^js threejs-obj config]
     "
      Called when a new entity is added to the scene.
