@@ -85,8 +85,7 @@
     (if this
       ;; Fully reconstruct scene object
       (try
-        (let [[o n] this
-              parent-obj (.-parent old-obj)
+        (let [parent-obj (.-parent old-obj)
               children (.-children old-obj)
               new-obj (create-object new-data)]
           (on-object-removed context node old-obj)
@@ -98,7 +97,8 @@
               (.add new-obj child)))
           (.dispatchEvent new-obj #js {:type "on-added"})
           (when-let [callback (:on-added metadata)]
-            (callback new-obj)))
+            (callback new-obj))
+          (systems/dispatch-on-added context (.-id new-obj) new-obj (:component-config new-data)))
         (catch :default ex
           (log "Failed to update node due to error")
           (log ex)
