@@ -176,6 +176,11 @@
       (set! (.-type sm) (or (:type shadow-map)
                             three/PCFShadowMap)))))
 
+(defn- raw-context->context [^Context raw-ctx]
+  {:threejs-renderer (.-renderer raw-ctx)
+   :threejs-scene (.-sceneRoot raw-ctx)
+   :canvas (.-canvas raw-ctx)})
+
 (defn- ^Context create-context [root-fn dom-root {:keys [on-before-render
                                                          on-after-render
                                                          shadow-map
@@ -200,6 +205,7 @@
                                  on-after-render
                                  systems)]
       (set! (.-animateFn context) #(animate context))
+      (systems/dispatch-init systems (raw-context->context context))
       (init-scene context virtual-scene scene-root)
       (.push contexts context)
       (.setAnimationLoop renderer (.-animateFn context))
@@ -207,11 +213,6 @@
 
 (defn- remove-all-children! [^Context context ^vscene/Node vscene-root]
   (.for-each-child vscene-root (partial remove-node! context)))
-
-(defn- raw-context->context [^Context raw-ctx]
-  {:threejs-renderer (.-renderer raw-ctx)
-   :threejs-scene (.-sceneRoot raw-ctx)
-   :canvas (.-canvas raw-ctx)})
 
 (defn- reset-context! [^Context context root-fn {:keys [on-before-render on-after-render shadow-map systems]}]
   (let [scene-root        ^js (.-sceneRoot context)
@@ -225,6 +226,7 @@
     (set-shadow-map! renderer shadow-map)
     (set! (.-cameras context) (array))
     (set! (.-systems context) systems)
+    (systems/dispatch-init systems (raw-context->context context))
     (init-scene context new-virtual-scene scene-root)
     (set! (.-virtualScene context) new-virtual-scene)
     (set! (.-beforeRenderCb context) on-before-render)
@@ -239,8 +241,5 @@
     (reset-context! existing-context root-fn config)
     (create-context root-fn dom-root config)))
 
-
 (defn render [root-fn dom-root config]
-  (let [raw-ctx ^Context (create-or-reset-context root-fn dom-root config)
-        ctx     (raw-context->context raw-ctx)]
-    (systems/dispatch-init (.-systems raw-ctx) ctx)))
+  (raw-context->context (create-or-reset-context root-fn dom-root config)))
