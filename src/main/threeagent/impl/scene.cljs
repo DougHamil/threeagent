@@ -10,6 +10,11 @@
 
 (defonce ^:private contexts (array))
 
+(defn- raw-context->context [^Context raw-ctx]
+  {:threejs-renderer (.-renderer raw-ctx)
+   :threejs-scene (.-sceneRoot raw-ctx)
+   :canvas (.-canvas raw-ctx)})
+
 (defn- create-object [node-data]
   (let [comp-config (:component-config node-data)
         obj (render-component (:component-key node-data) comp-config)]
@@ -59,6 +64,7 @@
     (.for-each-child node (partial remove-node! context))))
 
 (defn- init-scene [^Context context virtual-scene scene-root]
+  (systems/dispatch-init (.-systems context) (raw-context->context context))
   (add-node context scene-root (.-root virtual-scene)))
 
 (defn diff-data [o n]
@@ -176,10 +182,6 @@
       (set! (.-type sm) (or (:type shadow-map)
                             three/PCFShadowMap)))))
 
-(defn- raw-context->context [^Context raw-ctx]
-  {:threejs-renderer (.-renderer raw-ctx)
-   :threejs-scene (.-sceneRoot raw-ctx)
-   :canvas (.-canvas raw-ctx)})
 
 (defn- ^Context create-context [root-fn dom-root {:keys [on-before-render
                                                          on-after-render
@@ -205,7 +207,6 @@
                                  on-after-render
                                  systems)]
       (set! (.-animateFn context) #(animate context))
-      (systems/dispatch-init systems (raw-context->context context))
       (init-scene context virtual-scene scene-root)
       (.push contexts context)
       (.setAnimationLoop renderer (.-animateFn context))
@@ -214,24 +215,23 @@
 (defn- remove-all-children! [^Context context ^vscene/Node vscene-root]
   (.for-each-child vscene-root (partial remove-node! context)))
 
-(defn- reset-context! [^Context context root-fn {:keys [on-before-render on-after-render shadow-map systems]}]
-  (let [scene-root        ^js (.-sceneRoot context)
-        virtual-scene     ^vscene/Scene (.-virtualScene context)
+(defn- reset-context! [^Context old-context root-fn {:keys [on-before-render on-after-render shadow-map systems]}]
+  (let [scene-root        ^js (.-sceneRoot old-context)
+        virtual-scene     ^vscene/Scene (.-virtualScene old-context)
         new-virtual-scene (vscene/create root-fn)
-        renderer          ^js (.-renderer context)
-        old-context       (raw-context->context context)]
-    (systems/dispatch-destroy (.-systems context) old-context)
-    (remove-all-children! context (.-root virtual-scene))
+        renderer          ^js (.-renderer old-context)]
+    (systems/dispatch-destroy (.-systems old-context)
+                              (raw-context->context old-context))
+    (remove-all-children! old-context (.-root virtual-scene))
     (vscene/destroy! virtual-scene)
     (set-shadow-map! renderer shadow-map)
-    (set! (.-cameras context) (array))
-    (set! (.-systems context) systems)
-    (systems/dispatch-init systems (raw-context->context context))
-    (init-scene context new-virtual-scene scene-root)
-    (set! (.-virtualScene context) new-virtual-scene)
-    (set! (.-beforeRenderCb context) on-before-render)
-    (set! (.-afterRenderCb context) on-after-render)
-    context))
+    (set! (.-cameras old-context) (array))
+    (set! (.-systems old-context) systems)
+    (init-scene old-context new-virtual-scene scene-root)
+    (set! (.-virtualScene old-context) new-virtual-scene)
+    (set! (.-beforeRenderCb old-context) on-before-render)
+    (set! (.-afterRenderCb old-context) on-after-render)
+    old-context))
 
 (defn- find-context [dom-root]
   (first (filter #(= (.-domRoot ^js %) dom-root) contexts)))
