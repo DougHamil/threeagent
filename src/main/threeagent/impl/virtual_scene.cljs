@@ -5,7 +5,7 @@
             [reagent.core :as reagent])
   (:import [goog.structs PriorityQueue]))
 
-(defonce ^:private non-component-keys #{:position :rotation :scale :cast-shadow :receive-shadow})
+(defonce ^:private non-component-keys #{:position :rotation :scale})
 
 (defn print-tree
   ([^Node node]

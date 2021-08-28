@@ -64,7 +64,6 @@
     (.for-each-child node (partial remove-node! context))))
 
 (defn- init-scene [^Context context virtual-scene scene-root]
-  (systems/dispatch-init (.-systems context) (raw-context->context context))
   (add-node context scene-root (.-root virtual-scene)))
 
 (defn diff-data [o n]
@@ -190,7 +189,6 @@
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
-        virtual-scene (vscene/create root-fn)
         renderer (new three/WebGLRenderer (clj->js {:canvas canvas}))
         camera (three/PerspectiveCamera. 75 (/ width height) 0.1 1000)
         cameras (array)
@@ -198,7 +196,12 @@
         clock (new three/Clock)]
     (.setSize renderer width height)
     (set-shadow-map! renderer shadow-map)
-    (let [context (Context. virtual-scene
+    ;; Systems are initialized before first virtual-render
+    (systems/dispatch-init systems {:threejs-renderer renderer
+                                    :threejs-scene scene-root
+                                    :canvas canvas})
+    (let [virtual-scene (vscene/create root-fn)
+          context (Context. virtual-scene
                                  scene-root
                                  dom-root nil
                                  canvas camera cameras
@@ -218,7 +221,6 @@
 (defn- reset-context! [^Context old-context root-fn {:keys [on-before-render on-after-render shadow-map systems]}]
   (let [scene-root        ^js (.-sceneRoot old-context)
         virtual-scene     ^vscene/Scene (.-virtualScene old-context)
-        new-virtual-scene (vscene/create root-fn)
         renderer          ^js (.-renderer old-context)]
     (systems/dispatch-destroy (.-systems old-context)
                               (raw-context->context old-context))
@@ -227,11 +229,15 @@
     (set-shadow-map! renderer shadow-map)
     (set! (.-cameras old-context) (array))
     (set! (.-systems old-context) systems)
-    (init-scene old-context new-virtual-scene scene-root)
-    (set! (.-virtualScene old-context) new-virtual-scene)
-    (set! (.-beforeRenderCb old-context) on-before-render)
-    (set! (.-afterRenderCb old-context) on-after-render)
-    old-context))
+    (systems/dispatch-init systems {:threejs-renderer renderer
+                                    :threejs-scene scene-root
+                                    :canvas (.-canvas old-context)})
+    (let [new-virtual-scene (vscene/create root-fn)]
+      (init-scene old-context new-virtual-scene scene-root)
+      (set! (.-virtualScene old-context) new-virtual-scene)
+      (set! (.-beforeRenderCb old-context) on-before-render)
+      (set! (.-afterRenderCb old-context) on-after-render)
+      old-context)))
 
 (defn- find-context [dom-root]
   (first (filter #(= (.-domRoot ^js %) dom-root) contexts)))
