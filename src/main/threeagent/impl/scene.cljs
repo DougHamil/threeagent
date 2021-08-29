@@ -58,7 +58,7 @@
 
 (defn- remove-node! [^Context context ^vscene/Node node]
   (let [obj (.-threejs node)
-        parent-obj ^js (.-threejs (.-parent node))]
+        parent-obj ^three/Object3D (.-threejs (.-parent node))]
     (on-object-removed context node obj)
     (.remove parent-obj obj)
     (.for-each-child node (partial remove-node! context))))
@@ -98,7 +98,7 @@
           (.remove parent-obj old-obj)
           (.add parent-obj new-obj)
           (when-not (.terminal? node)
-            (doseq [child children]
+            (doseq [child (aclone children)]
               (.add new-obj child)))
           (.dispatchEvent new-obj #js {:type "on-added"})
           (when-let [callback (:on-added metadata)]
@@ -216,7 +216,8 @@
       context)))
 
 (defn- remove-all-children! [^Context context ^vscene/Node vscene-root]
-  (.for-each-child vscene-root (partial remove-node! context)))
+  (.for-each-child vscene-root (partial remove-node! context))
+  (.clear (.-sceneRoot context)))
 
 (defn- reset-context! [^Context old-context root-fn {:keys [on-before-render on-after-render shadow-map systems]}]
   (let [scene-root        ^js (.-sceneRoot old-context)
