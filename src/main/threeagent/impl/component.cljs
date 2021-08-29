@@ -120,6 +120,7 @@
                                height 1.0
                                radial-segments 8
                                height-segments 1
+                               open-ended? false
                                cast-shadow false
                                receive-shadow false
                                theta-start 0
