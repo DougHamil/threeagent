@@ -8,6 +8,7 @@
      ```clojure
       {:threejs-renderer <ThreeJS Renderer Instance>
        :threejs-scene <ThreeJS Scene>
+       :systems <Map of all systems>
        :canvas <Canvas DOM Element>}
      ```
     ")
@@ -19,6 +20,7 @@
      ```clojure
       {:threejs-renderer <ThreeJS Renderer Instance>
        :threejs-scene <ThreeJS Scene>
+       :systems <Map of all systems>
        :canvas <Canvas DOM Element>}
      ```
     ")

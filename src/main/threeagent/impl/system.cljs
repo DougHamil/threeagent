@@ -19,9 +19,11 @@
     (system-protocol/tick system delta-time)))
   
 (defn dispatch-init [systems context]
-  (doseq [[_ system] systems]
-    (system-protocol/init system context)))
+  (let [context (assoc context :systems systems)]
+    (doseq [[_ system] systems]
+      (system-protocol/init system context))))
 
 (defn dispatch-destroy [systems context]
-  (doseq [[_ system] systems]
-    (system-protocol/destroy system context)))
+  (let [context (assoc context :systems systems)]
+    (doseq [[_ system] systems]
+      (system-protocol/destroy system context))))
