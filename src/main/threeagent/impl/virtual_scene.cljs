@@ -102,6 +102,9 @@
                 (inc (.-depth parent))
                 0)
         node (Node. parent depth key metadata data false nil nil children-map)]
+    (if (not (or (string? key)
+                 (number? key)))
+      (throw (str "^:key must be a string or number, found: " key)))
     (doseq [[idx child] (medley/indexed children)]
       (when-let [child-node (->node scene node idx child)]
         (.set children-map (.-key child-node) child-node)))
@@ -239,12 +242,12 @@
     (let [key (.-key node)
           children (.-children node)
           old-data (.-data node)
+          current-keys (set (es6-iterator-seq (.keys children)))
           rendered-form (if render-fn
                           (apply render-fn (rest new-form))
                           new-form)
           shallow-node (->node-shallow key rendered-form)
           new-data (:data shallow-node)
-          current-keys (set (es6-iterator-seq (.keys children)))
           new-keys (set (map first (:children-keys shallow-node)))
           dropped-keys (set/difference current-keys new-keys)]
       (set! (.-data node) new-data)
@@ -284,10 +287,9 @@
     (loop [entry ^RenderQueueEntry (.dequeue queue)]
       (when entry
         (when-let [node ^Node (.-node entry)]
-          (do
-            (when-not (.-disposed node)
-              (render-node! scene node (.-renderFn entry) (.-forceReplace entry) changelog))
-            (recur ^RenderQueueEntry (.dequeue queue))))))))
+          (when-not (.-disposed node)
+            (render-node! scene node (.-renderFn entry) (.-forceReplace entry) changelog))
+          (recur ^RenderQueueEntry (.dequeue queue)))))))
 
 (defn destroy! [^Scene scene]
   (dispose-node! (.-root scene)))
