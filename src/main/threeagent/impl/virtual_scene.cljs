@@ -206,7 +206,6 @@
 
 (defn- remove-node! [^Node node changelog]
   (.push changelog [node :remove (.-data node) nil])
-  (set! (.-data node) nil)
   (set! (.-dirty node) false)
   (dispose-node! node))
 

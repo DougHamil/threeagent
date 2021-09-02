@@ -20,6 +20,7 @@
     [:object {:custom-system {:value "a"}}
       [:object {:custom-system {:value "b"}}]
       (when (:add-third? @state)
+        ^{:key "third"}
         [:object {:custom-system {:value "c"}}])]])
 
 (deftest persistent-custom-system-test
@@ -61,5 +62,10 @@
            (js/setTimeout (fn []
                             (is (= 3 (count @sys-state)))
                             (is (contains? @sys-state {:value "c"}))
-                            (done))
+                            (swap! state assoc :add-third? false)
+                            (js/setTimeout (fn []
+                                             (is (= 2 (count @sys-state)))
+                                             (is (not (contains? @sys-state {:value "c"})))
+                                             (done))
+                                           500))
                           500))))
