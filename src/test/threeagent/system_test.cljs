@@ -9,19 +9,22 @@
   ISystem
   (init [_ _ctx])
   (destroy [_ _ctx])
-  (on-entity-added [_ key _obj config]
-    (swap! sys-state conj config))
-  (on-entity-removed [_ key _obj config]
-    (swap! sys-state disj config))
+  (on-entity-added [_ id _obj _config]
+    (swap! sys-state conj id))
+  (on-entity-removed [_ id _obj _config]
+    (swap! sys-state disj id))
   (tick [_ _]))
 
 (defn root [state]
   [:object
-    [:object {:custom-system {:value "a"}}
-      [:object {:custom-system {:value "b"}}]
-      (when (:add-third? @state)
-        ^{:key "third"}
-        [:object {:custom-system {:value "c"}}])]])
+   [:object {:id "a"
+             :custom-system {}}
+    [:object {:id "b"
+              :custom-system {}}
+     (when (:add-third? @state)
+       ^{:key "third"}
+       [:object {:id "c"
+                 :custom-system {}}])]]])
 
 (deftest persistent-custom-system-test
   (let [state (th/atom {})
@@ -42,8 +45,8 @@
     (th/render (partial root state) (create-canvas "render-system-test-2")
                 {:systems {:custom-system my-system}})
     (is (= 2 (count @sys-state)))
-    (is (contains? @sys-state {:value "b"}))
-    (is (contains? @sys-state {:value "a"}))
+    (is (contains? @sys-state "b"))
+    (is (contains? @sys-state "a"))
     ;; Ensure consistency across re-render
     (th/render (partial root state) (create-canvas "render-system-test-2")
                 {:systems {:custom-system my-system}})
@@ -61,11 +64,11 @@
            ;; Wait for re-render
            (js/setTimeout (fn []
                             (is (= 3 (count @sys-state)))
-                            (is (contains? @sys-state {:value "c"}))
+                            (is (contains? @sys-state "c"))
                             (swap! state assoc :add-third? false)
                             (js/setTimeout (fn []
                                              (is (= 2 (count @sys-state)))
-                                             (is (not (contains? @sys-state {:value "c"})))
+                                             (is (not (contains? @sys-state "c")))
                                              (done))
                                            500))
                           500))))

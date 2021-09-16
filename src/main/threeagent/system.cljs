@@ -24,17 +24,17 @@
        :canvas <Canvas DOM Element>}
      ```
     ")
-  (on-entity-added [this key ^js threejs-obj config]
+  (on-entity-added [this id ^js threejs-obj config]
     "
      Called when a new entity is added to the scene.
-     `key`: The scene-wide unique key for this entity
+     `id`: The ID of this entity, when specified via the `:id` property, `nil` otherwise
      `threejs-obj`: the ThreeJS object instance for this entity 
      `config`: this entity's configuration value for this system's key
     ")
-  (on-entity-removed [this key ^js threejs-obj config]
+  (on-entity-removed [this id ^js threejs-obj config]
     "
      Called when an entity is removed from the scene
-     `key`: The scene-wide unique key for this entity
+     `id`: The ID of this entity, when specified via the `:id` property, `nil` otherwise
      `threejs-obj`: the ThreeJS object instance for this entity 
      `config`: this entity's configuration value for this system's key
     ")

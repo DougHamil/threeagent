@@ -16,6 +16,7 @@
      (println p "|-"
               (.-key node)
               (str "comp:" (:component-key (.-data node)))
+              (str "id:" (:id (.-data node)))
               (str "dirty:" (.-dirty node))
               (str "reactive:" is-reactive))
      (doseq [child (es6-iterator-seq (.values (.-children node)))]
@@ -34,7 +35,7 @@
 (deftype RenderQueueEntry [^Node node ^js renderFn ^js forceReplace]
   Object)
 
-(deftype Node [^Node parent depth key meta data dirty render reaction children]
+(deftype Node [^Node parent depth id key meta data dirty render reaction children]
   Object
   (terminal? [this]
     (= 0 (.-size children)))
@@ -70,6 +71,7 @@
    :scale (:scale comp-config [1.0 1.0 1.0])
    :cast-shadow (:cast-shadow comp-config false)
    :receive-shadow (:receive-shadow comp-config false)
+   :id (:id comp-config)
    :component-key comp-key
    :component-config (extract-comp-config comp-config)}) ;(apply dissoc comp-config non-component-keys)})
 
@@ -101,7 +103,7 @@
         depth (if parent
                 (inc (.-depth parent))
                 0)
-        node (Node. parent depth key metadata data false nil nil children-map)]
+        node (Node. parent depth (:id comp-config) key metadata data false nil nil children-map)]
     (if (not (or (string? key)
                  (number? key)))
       (throw (str "^:key must be a string or number, found: " key)))
@@ -184,7 +186,7 @@
   (let [[comp-key & rs] form
         first-child (first rs)
         comp-config (if (map? first-child) first-child {})
-        children (filter #(and (some? %) (not (empty? %)))
+        children (filter #(and (some? %) (seq %))
                          (if (map? first-child) (rest rs) rs))]
     {:key key
      :data (node-data comp-key comp-config)

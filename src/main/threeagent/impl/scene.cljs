@@ -41,7 +41,7 @@
       (.dispatchEvent obj #js {:type "on-added"})
       (when-let [callback (:on-added (.-meta node))]
         (callback obj))
-      (systems/dispatch-on-added context (.-key node) obj comp-config)
+      (systems/dispatch-on-added context (.-id node) obj comp-config)
       obj)
     (catch :default e
       (js/console.error "Failed to add node:")
@@ -51,7 +51,7 @@
   (.dispatchEvent obj #js {:type "on-removed"})
   (when-let [callback (:on-removed (.-meta node))]
     (callback obj))
-  (systems/dispatch-on-removed context (.-key node) obj (:component-config (.-data node)))
+  (systems/dispatch-on-removed context (.-id node) obj (:component-config (.-data node)))
   (when (.-isCamera obj)
     (let [cams (.-cameras context)]
       (.splice cams (.indexOf cams obj) 1))))
@@ -103,7 +103,7 @@
           (.dispatchEvent new-obj #js {:type "on-added"})
           (when-let [callback (:on-added metadata)]
             (callback new-obj))
-          (systems/dispatch-on-added context (.-key node) new-obj (:component-config new-data)))
+          (systems/dispatch-on-added context (.-id node) new-obj (:component-config new-data)))
         (catch :default ex
           (log "Failed to update node due to error")
           (log ex)
