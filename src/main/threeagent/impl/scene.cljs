@@ -28,6 +28,9 @@
 (defn- set-node-object [^Context context ^vscene/Node node obj]
   (set! (.-threejs node) obj)
   (when (.-isCamera obj)
+    (when (.-active obj)
+      (set! (.-lastCamera context) (.-camera context))
+      (set! (.-camera context) obj))
     (.push (.-cameras context) obj)))
 
 (defn- add-node [^Context context parent-object ^vscene/Node node]
@@ -53,6 +56,8 @@
     (callback obj))
   (systems/dispatch-on-removed context (.-id node) obj (:component-config (.-data node)))
   (when (.-isCamera obj)
+    (when (.-active obj)
+      (set! (.-camera context) (.-lastCamera context)))
     (let [cams (.-cameras context)]
       (.splice cams (.indexOf cams obj) 1))))
 
@@ -131,13 +136,6 @@
   (doseq [change changelog]
     (apply-change! context change)))
 
-(defn- find-active-camera [^Context context]
-  (or
-   (->> (.-cameras context)
-        (filter #(.-active %))
-        (last))
-   (.-camera context)))
-
 (defn- animate [^Context context]
   (let [stats (.-stats context)
         clock (.-clock context)
@@ -151,6 +149,7 @@
       (.begin stats))
     (let [delta-time (.getDelta clock)
           changelog (array)]
+      (systems/dispatch-on-tick context delta-time)
       ;; Invoke callbacks
       (when before-render-cb (before-render-cb delta-time))
       ;; Render virtual scene
@@ -158,13 +157,12 @@
       ;; Apply virtual scene changes to ThreeJs scene
       (apply-virtual-scene-changes! context changelog)
       ;; Fetch camera after applying the scene changes since it might have been updated
-      (let [camera (find-active-camera context)]
+      (let [camera (.-camera context)]
         ;; Render ThreeJS Scene
         (if composer
           (.render composer delta-time)
           (.render renderer scene-root camera)))
-      (when after-render-cb (after-render-cb delta-time))
-      (systems/dispatch-on-tick context delta-time))
+      (when after-render-cb (after-render-cb delta-time)))
     (when stats
       (.end stats))))
 
@@ -209,10 +207,9 @@
                                  on-before-render
                                  on-after-render
                                  systems)]
-      (set! (.-animateFn context) #(animate context))
       (init-scene context virtual-scene scene-root)
       (.push contexts context)
-      (.setAnimationLoop renderer (.-animateFn context))
+      (.setAnimationLoop renderer #(animate context))
       context)))
 
 (defn- remove-all-children! [^Context context ^vscene/Node vscene-root]
