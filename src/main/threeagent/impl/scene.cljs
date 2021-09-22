@@ -54,7 +54,6 @@
   (.dispatchEvent obj #js {:type "on-removed"})
   (when-let [callback (:on-removed (.-meta node))]
     (callback obj))
-  (systems/dispatch-on-removed context (.-id node) obj (:component-config (.-data node)))
   (when (.-isCamera obj)
     (when (.-active obj)
       (set! (.-camera context) (.-lastCamera context)))
@@ -64,6 +63,7 @@
 (defn- remove-node! [^Context context ^vscene/Node node]
   (let [obj (.-threejs node)
         parent-obj ^three/Object3D (.-threejs (.-parent node))]
+    (systems/dispatch-on-removed context (.-id node) obj (:component-config (.-data node)))
     (on-object-removed context node obj)
     (.remove parent-obj obj)
     (.for-each-child node (partial remove-node! context))))
@@ -98,6 +98,7 @@
         (let [parent-obj (.-parent old-obj)
               children (.-children old-obj)
               new-obj (create-object new-data)]
+          (systems/dispatch-on-removed context (.-id node) old-obj (:component-config old-data))
           (on-object-removed context node old-obj)
           (set-node-object context node new-obj)
           (.remove parent-obj old-obj)

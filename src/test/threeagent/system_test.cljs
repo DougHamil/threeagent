@@ -4,7 +4,6 @@
             [threeagent.threejs.util :refer [create-canvas]]
             [threeagent.core :as th]))
 
-
 (defrecord MySystem [sys-state]
   ISystem
   (init [_ _ctx])
@@ -26,6 +25,16 @@
        [:object {:id "c"
                  :custom-system {}}])]]])
 
+(defn child [system?]
+  (if system?
+    [:object {:id "a"
+              :custom-system {}}]
+    [:object {:id "b"}]))
+
+(defn root2 [state]
+  [:object
+   [child @state]])
+
 (deftest persistent-custom-system-test
   (let [state (th/atom {})
         sys-state (atom #{})
@@ -33,7 +42,7 @@
     (th/render (partial root state) (create-canvas "render-system-test-1")
                {:systems {:custom-system my-system}})
     (is (= 2 (count @sys-state)))
-  ;; Ensure consistency across re-render
+ ;; Ensure consistency across re-render
     (th/render (partial root state) (create-canvas "render-system-test-1")
                {:systems {:custom-system my-system}})
     (is (= 2 (count @sys-state)))))
@@ -43,32 +52,47 @@
         sys-state (atom #{})
         my-system (->MySystem sys-state)]
     (th/render (partial root state) (create-canvas "render-system-test-2")
-                {:systems {:custom-system my-system}})
+               {:systems {:custom-system my-system}})
     (is (= 2 (count @sys-state)))
     (is (contains? @sys-state "b"))
     (is (contains? @sys-state "a"))
-    ;; Ensure consistency across re-render
+  ;; Ensure consistency across re-render
     (th/render (partial root state) (create-canvas "render-system-test-2")
-                {:systems {:custom-system my-system}})
+               {:systems {:custom-system my-system}})
     (is (= 2 (count @sys-state)))))
 
-(deftest reactive-render-system-test
+ (deftest reactive-render-system-test
+   (async done
+          (let [state (th/atom {})
+                sys-state (atom #{})
+                my-system (->MySystem sys-state)]
+            (th/render (partial root state) (create-canvas "render-system-test-3")
+                       {:systems {:custom-system my-system}})
+            (is (= 2 (count @sys-state)))
+            (swap! state assoc :add-third? true)
+          ;; Wait for re-render
+            (js/setTimeout (fn []
+                             (is (= 3 (count @sys-state)))
+                             (is (contains? @sys-state "c"))
+                             (swap! state assoc :add-third? false)
+                             (js/setTimeout (fn []
+                                              (is (= 2 (count @sys-state)))
+                                              (is (not (contains? @sys-state "c")))
+                                              (done))
+                                            500))
+                           500))))
+
+(deftest rerender-child-component-system-lifecycle-test
   (async done
-         (let [state (th/atom {})
+         (let [state (th/atom true)
                sys-state (atom #{})
                my-system (->MySystem sys-state)]
-           (th/render (partial root state) (create-canvas "render-system-test-3")
+           (th/render (partial root2 state) (create-canvas "render-system-test-4")
                       {:systems {:custom-system my-system}})
-           (is (= 2 (count @sys-state)))
-           (swap! state assoc :add-third? true)
+           (is (= #{"a"} @sys-state))
+           (reset! state false)
            ;; Wait for re-render
            (js/setTimeout (fn []
-                            (is (= 3 (count @sys-state)))
-                            (is (contains? @sys-state "c"))
-                            (swap! state assoc :add-third? false)
-                            (js/setTimeout (fn []
-                                             (is (= 2 (count @sys-state)))
-                                             (is (not (contains? @sys-state "c")))
-                                             (done))
-                                           500))
+                            (is (= #{} @sys-state))
+                            (done))
                           500))))

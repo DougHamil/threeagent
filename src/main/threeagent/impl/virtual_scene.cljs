@@ -37,9 +37,9 @@
 
 (deftype Node [^Node parent depth id key meta data dirty render reaction children]
   Object
-  (terminal? [this]
+  (terminal? [_this]
     (= 0 (.-size children)))
-  (for-each-child [this f]
+  (for-each-child [_this f]
     (doseq [child (es6-iterator-seq (.values children))]
       (f child))))
 
@@ -117,7 +117,6 @@
     (with-meta
       [:object (apply f args)]
       original-meta)))
-  
 
 (defmethod ->node :fn [scene parent key form]
   (let [key (or (:key (meta form)) key)
