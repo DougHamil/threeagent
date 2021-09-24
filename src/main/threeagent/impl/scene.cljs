@@ -1,8 +1,8 @@
 (ns threeagent.impl.scene
   (:require [threeagent.impl.virtual-scene :as vscene]
-            [threeagent.impl.util :refer [log]]
+            [threeagent.impl.entities :refer [builtin-entity-types]]
+            [threeagent.entity :as entity]
             [threeagent.impl.threejs :as threejs]
-            [threeagent.impl.component :refer [render-component]]
             [threeagent.impl.types :refer [Context]]
             [threeagent.impl.system :as systems]
             [clojure.string :as string]
@@ -15,127 +15,155 @@
    :threejs-scene (.-sceneRoot raw-ctx)
    :canvas (.-canvas raw-ctx)})
 
-(defn- create-object [node-data]
-  (let [comp-config (:component-config node-data)
-        obj (render-component (:component-key node-data) comp-config)]
-    (threejs/set-position! obj (:position node-data))
-    (threejs/set-rotation! obj (:rotation node-data))
-    (threejs/set-scale! obj (:scale node-data))
-    (when (:cast-shadow node-data) (threejs/set-cast-shadow! obj (:cast-shadow node-data)))
-    (when (:receive-shadow node-data) (threejs/set-receive-shadow! obj (:receive-shadow node-data)))
+(defn- in-place-update? [^Context ctx ^vscene/Node node]
+  (let [entity-type (get (.-entityTypes ctx) (:component-key (.-data node)))]
+    (satisfies? entity/IUpdateableEntity entity-type)))
+
+(defn- on-entity-removed [^Context ctx ^vscene/Node node ^three/Object3D old-obj old-component-config]
+  ;; Lifecycle Hooks
+  (when-let [callback (:on-removed (.-meta node))]
+    (callback old-obj))
+  (when-let [on-removed (:on-removed old-component-config)]
+    (on-removed old-obj))
+  (systems/dispatch-on-removed ctx (.-id node) old-obj old-component-config)
+  (when (.-isCamera old-obj)
+    (when (.-active old-obj)
+      (set! (.-camera ctx) (.-lastCamera ctx)))
+    (let [cams (.-cameras ctx)]
+      (.splice cams (.indexOf cams old-obj) 1))))
+
+(defn- on-entity-added [^Context ctx ^vscene/Node node ^three/Object3D obj component-config]
+  ;; Lifecycle Hooks
+  (when-let [callback (:on-added (.-meta node))]
+    (callback obj))
+  (when-let [on-added (:on-added component-config)]
+    (on-added obj))
+  (systems/dispatch-on-added ctx (.-id node) obj component-config)
+  (when (.-isCamera obj)
+   (when (.-active obj)
+     (set! (.-lastCamera ctx) (.-camera ctx))
+     (set! (.-camera ctx) obj))
+   (.push (.-cameras ctx) obj)))
+
+(defn- create-entity-object [^Context ctx ^vscene/Node node]
+  (let [{:keys [component-config
+                component-key
+                position
+                rotation
+                scale]} (.-data node)
+        entity-type (get (.-entityTypes ctx) component-key)
+        obj (entity/create entity-type component-config)]
+    (threejs/set-position! obj position)
+    (threejs/set-rotation! obj rotation)
+    (threejs/set-scale! obj scale)
+    obj))
+  
+(defn- create-entity
+  "Create an entity"
+  [^Context ctx ^three/Object3D parent-object ^vscene/Node node]
+  (let [{:keys [component-config]} (.-data node)
+        obj (create-entity-object ctx node)]
+    (.add parent-object obj)
+    (set! (.-threejs node) obj)
+    (on-entity-added ctx node obj component-config)
+    (.for-each-child node (partial create-entity ctx obj))
     obj))
 
-(defn- set-node-object [^Context context ^vscene/Node node obj]
-  (set! (.-threejs node) obj)
-  (when (.-isCamera obj)
-    (when (.-active obj)
-      (set! (.-lastCamera context) (.-camera context))
-      (set! (.-camera context) obj))
-    (.push (.-cameras context) obj)))
+(defn- destroy-entity
+  "Destroy an entity"
+  [^Context ctx ^vscene/Node node]
+  (.for-each-child node (partial destroy-entity ctx))
+  (let [{:keys [component-key
+                component-config]} (.-data node)
+        entity-type (get (.-entityTypes ctx) component-key)
+        obj  ^three/Object3D (.-threejs node)]
+    (on-entity-removed ctx node obj component-config)
+    (.remove (.-parent obj) obj)
+    (entity/destroy! entity-type obj)))
 
-(defn- add-node [^Context context parent-object ^vscene/Node node]
-  (try
-    (let [node-data (.-data node)
-          comp-config (:component-config node-data)
-          obj (create-object node-data)]
-      (set-node-object context node obj)
-      (.add parent-object obj)
-      (.for-each-child node (partial add-node context obj))
-      (.dispatchEvent obj #js {:type "on-added"})
-      (when-let [callback (:on-added (.-meta node))]
-        (callback obj))
-      (systems/dispatch-on-added context (.-id node) obj comp-config)
-      obj)
-    (catch :default e
-      (js/console.error "Failed to add node:")
-      (js/console.error (clj->js {:node node :error e})))))
+(defn- update-entity
+  "Update an entity in-place"
+  [^Context ctx ^vscene/Node node old-data new-data]
+  (let [{:keys [component-config
+                component-key
+                position
+                rotation
+                scale]} new-data
+        entity-type (get (.-entityTypes ctx) component-key)
+        obj  ^three/Object3D (.-threejs node)]
+    (on-entity-removed ctx node obj (:component-config old-data))
+    (entity/update! entity-type obj component-config)
+    (threejs/set-position! obj position)
+    (threejs/set-rotation! obj rotation)
+    (threejs/set-scale! obj scale)
+    (on-entity-added ctx node obj component-config)
+    obj))
 
-(defn- on-object-removed [^Context context ^vscene/Node node ^js obj]
-  (.dispatchEvent obj #js {:type "on-removed"})
-  (when-let [callback (:on-removed (.-meta node))]
-    (callback obj))
-  (when (.-isCamera obj)
-    (when (.-active obj)
-      (set! (.-camera context) (.-lastCamera context)))
-    (let [cams (.-cameras context)]
-      (.splice cams (.indexOf cams obj) 1))))
+(defn- transform-entity
+  "Update the transformations of the entity in-place"
+  [^Context _ctx ^vscene/Node node]
+  (let [{:keys [position
+                rotation
+                scale]} (.-data node)
+        obj ^three/Object3D (.-threejs node)]
+    (threejs/set-position! obj position)
+    (threejs/set-rotation! obj rotation)
+    (threejs/set-scale! obj scale)))
 
-(defn- remove-node! [^Context context ^vscene/Node node]
-  (let [obj (.-threejs node)
-        parent-obj ^three/Object3D (.-threejs (.-parent node))]
-    (systems/dispatch-on-removed context (.-id node) obj (:component-config (.-data node)))
-    (on-object-removed context node obj)
-    (.remove parent-obj obj)
-    (.for-each-child node (partial remove-node! context))))
+(defn- replace-entity
+  "Destroy and recreate an entity at a give node in the scene-graph"
+  [^Context ctx ^vscene/Node node old-data new-data]
+  (let [old-obj (.-threejs node)
+        parent-obj (.-parent old-obj)
+        children (.-children old-obj)
+        new-obj (create-entity-object ctx node)]
+    (on-entity-removed ctx node old-obj (:component-config old-data))
+    (set! (.-threejs node) new-obj)
+    (.remove parent-obj old-obj)
+    (.add parent-obj new-obj)
+    (when-not (.terminal? node)
+      (doseq [child (aclone children)]
+        (.add new-obj child)))
+    (on-entity-added ctx node new-obj (:component-config new-data))))
 
-(defn- init-scene [^Context context virtual-scene scene-root]
-  (add-node context scene-root (.-root virtual-scene)))
+(defn- init-scene! [^Context context virtual-scene scene-root]
+  (create-entity context scene-root (.-root virtual-scene)))
 
-(defn diff-data [o n]
-  (let [this (when (or (not= (:component-config o) (:component-config n))
-                       (not= (:component-key o) (:component-key n)))
-               [o n])
-        position (when (not= (:position o) (:position n)) (:position n))
-        rotation (when (not= (:rotation o) (:rotation n)) (:rotation n))
-        scale (when (not= (:scale o) (:scale n)) (:scale n))
-        receive-shadow (when (not= (:receive-shadow o) (:receive-shadow n)) (:receive-shadow n))
-        cast-shadow (when (not= (:cast-shadow o) (:cast-shadow n)) (:cast-shadow n))]
-    {:this this
-     :scale scale
-     :position position
-     :rotation rotation
-     :cast-shadow cast-shadow
-     :receive-shadow receive-shadow}))
-
-(defn- update-node! [^Context context ^vscene/Node node old-data new-data]
-  (let [diff (diff-data old-data new-data)
-        old-obj ^js (.-threejs node)
-        metadata (.-meta node)
-        this (:this diff)]
-    (if this
-      ;; Fully reconstruct scene object
-      (try
-        (let [parent-obj (.-parent old-obj)
-              children (.-children old-obj)
-              new-obj (create-object new-data)]
-          (systems/dispatch-on-removed context (.-id node) old-obj (:component-config old-data))
-          (on-object-removed context node old-obj)
-          (set-node-object context node new-obj)
-          (.remove parent-obj old-obj)
-          (.add parent-obj new-obj)
-          (when-not (.terminal? node)
-            (doseq [child (aclone children)]
-              (.add new-obj child)))
-          (.dispatchEvent new-obj #js {:type "on-added"})
-          (when-let [callback (:on-added metadata)]
-            (callback new-obj))
-          (systems/dispatch-on-added context (.-id node) new-obj (:component-config new-data)))
-        (catch :default ex
-          (log "Failed to update node due to error")
-          (log ex)
-          (log node)))
-      ;; Update transformations
-      (do
-        (when (:position diff) (threejs/set-position! old-obj (:position diff)))
-        (when (:rotation diff) (threejs/set-rotation! old-obj (:rotation diff)))
-        (when (:scale diff) (threejs/set-scale! old-obj (:scale diff)))
-        (when (:cast-shadow diff) (threejs/set-cast-shadow! old-obj (:cast-shadow diff)))
-        (when (:receive-shadow diff) (threejs/set-receive-shadow! old-obj (:receive-shadow diff)))))))
-
-(defn- apply-change! [^Context context [^vscene/Node node action old new]]
+(defn- update-type [^Context context ^vscene/Node node o n]
   (cond
-    (= :add action)
-    (add-node context ^js (.-threejs (.-parent node)) node)
+    (not= (:component-key o)
+          (:component-key n)) :replace-entity
 
-    (= :remove action)
-    (remove-node! context node)
+    (not= (:component-config o)
+          (:component-config n))
+    (if (in-place-update? context node)
+      :update-entity
+      :replace-entity)
 
-    (= :update action)
-    (update-node! context node old new)))
+    :else :transform-entity))
 
-(defn- apply-virtual-scene-changes! [^Context context changelog]
-  (doseq [change changelog]
-    (apply-change! context change)))
+(defn- apply-change! [^Context context [^vscene/Node node action old-data new-data]]
+  (case action
+    :add
+    (create-entity context ^three/Object3D (.-threejs (.-parent node)) node)
+
+    :remove
+    (destroy-entity context node)
+
+    :update 
+    (case (update-type context node old-data new-data)
+      :replace-entity (try
+                        (replace-entity context node old-data new-data)
+                        (catch :default ex
+                          (js/console.error "Failed to replace entity" ex node)))
+      :update-entity (try
+                       (update-entity context node old-data new-data)
+                       (catch :default ex
+                         (js/console.error "Failed to update entity" ex node)))
+      :transform-entity (try
+                          (transform-entity context node)
+                          (catch :default ex
+                            (js/console.error "Failed to transform entity" ex node))))))
 
 (defn- animate [^Context context]
   (let [stats (.-stats context)
@@ -156,7 +184,8 @@
       ;; Render virtual scene
       (vscene/render! virtual-scene changelog)
       ;; Apply virtual scene changes to ThreeJs scene
-      (apply-virtual-scene-changes! context changelog)
+      (doseq [change changelog]
+        (apply-change! context change))
       ;; Fetch camera after applying the scene changes since it might have been updated
       (let [camera (.-camera context)]
         ;; Render ThreeJS Scene
@@ -184,7 +213,8 @@
 (defn- ^Context create-context [root-fn dom-root {:keys [on-before-render
                                                          on-after-render
                                                          shadow-map
-                                                         systems]}]
+                                                         systems
+                                                         entity-types]}]
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
@@ -207,32 +237,35 @@
                                  clock renderer
                                  on-before-render
                                  on-after-render
+                                 (merge builtin-entity-types entity-types)
                                  systems)]
-      (init-scene context virtual-scene scene-root)
+      (init-scene! context virtual-scene scene-root)
       (.push contexts context)
       (.setAnimationLoop renderer #(animate context))
       context)))
 
-(defn- remove-all-children! [^Context context ^vscene/Node vscene-root]
-  (.for-each-child vscene-root (partial remove-node! context))
+(defn- clear-scene! [^Context context ^vscene/Node vscene-root]
+  (.for-each-child vscene-root (partial destroy-entity context))
   (.clear (.-sceneRoot context)))
 
-(defn- reset-context! [^Context old-context root-fn {:keys [on-before-render on-after-render shadow-map systems]}]
+(defn- reset-context! [^Context old-context root-fn {:keys [on-before-render on-after-render shadow-map
+                                                            entity-types systems]}]
   (let [scene-root        ^js (.-sceneRoot old-context)
         virtual-scene     ^vscene/Scene (.-virtualScene old-context)
         renderer          ^js (.-renderer old-context)]
     (systems/dispatch-destroy (.-systems old-context)
                               (raw-context->context old-context))
-    (remove-all-children! old-context (.-root virtual-scene))
+    (clear-scene! old-context (.-root virtual-scene))
     (vscene/destroy! virtual-scene)
     (set-shadow-map! renderer shadow-map)
     (set! (.-cameras old-context) (array))
     (set! (.-systems old-context) systems)
+    (set! (.-entityTypes old-context) (merge builtin-entity-types entity-types))
     (systems/dispatch-init systems {:threejs-renderer renderer
                                     :threejs-scene scene-root
                                     :canvas (.-canvas old-context)})
     (let [new-virtual-scene (vscene/create root-fn)]
-      (init-scene old-context new-virtual-scene scene-root)
+      (init-scene! old-context new-virtual-scene scene-root)
       (set! (.-virtualScene old-context) new-virtual-scene)
       (set! (.-beforeRenderCb old-context) on-before-render)
       (set! (.-afterRenderCb old-context) on-after-render)

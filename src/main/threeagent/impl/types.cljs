@@ -12,5 +12,6 @@
                   ^js renderer
                   ^js beforeRenderCb
                   ^js afterRenderCb
+                  entityTypes
                   systems]
   Object)

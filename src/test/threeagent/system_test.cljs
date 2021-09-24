@@ -61,26 +61,26 @@
                {:systems {:custom-system my-system}})
     (is (= 2 (count @sys-state)))))
 
- (deftest reactive-render-system-test
-   (async done
-          (let [state (th/atom {})
-                sys-state (atom #{})
-                my-system (->MySystem sys-state)]
-            (th/render (partial root state) (create-canvas "render-system-test-3")
-                       {:systems {:custom-system my-system}})
-            (is (= 2 (count @sys-state)))
-            (swap! state assoc :add-third? true)
-          ;; Wait for re-render
-            (js/setTimeout (fn []
-                             (is (= 3 (count @sys-state)))
-                             (is (contains? @sys-state "c"))
-                             (swap! state assoc :add-third? false)
-                             (js/setTimeout (fn []
-                                              (is (= 2 (count @sys-state)))
-                                              (is (not (contains? @sys-state "c")))
-                                              (done))
-                                            500))
-                           500))))
+(deftest reactive-render-system-test
+  (async done
+         (let [state (th/atom {})
+               sys-state (atom #{})
+               my-system (->MySystem sys-state)]
+           (th/render (partial root state) (create-canvas "render-system-test-3")
+                      {:systems {:custom-system my-system}})
+           (is (= 2 (count @sys-state)))
+           (swap! state assoc :add-third? true)
+         ;; Wait for re-render
+           (js/setTimeout (fn []
+                            (is (= 3 (count @sys-state)))
+                            (is (contains? @sys-state "c"))
+                            (swap! state assoc :add-third? false)
+                            (js/setTimeout (fn []
+                                             (is (= 2 (count @sys-state)))
+                                             (is (not (contains? @sys-state "c")))
+                                             (done))
+                                           500))
+                          500))))
 
 (deftest rerender-child-component-system-lifecycle-test
   (async done
