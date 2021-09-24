@@ -8,7 +8,10 @@
             [threeagent.parent-transform-update-test]
             [threeagent.delete-child-with-key-test]
             [threeagent.metadata-on-fn-component-test]
-            [threeagent.type-two-component-reaction-test]))
+            [threeagent.type-two-component-reaction-test]
+            [threeagent.child-node-removed-test]
+            [threeagent.threejs.nested-objects-test]
+            [threeagent.system-test]))
 
 (enable-console-print!)
 

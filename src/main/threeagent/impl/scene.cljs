@@ -3,23 +3,17 @@
             [threeagent.impl.util :refer [log]]
             [threeagent.impl.threejs :as threejs]
             [threeagent.impl.component :refer [render-component]]
-            ["three" :as three]
-            [cljs.core :refer [exists?]]))
+            [threeagent.impl.types :refer [Context]]
+            [threeagent.impl.system :as systems]
+            [clojure.string :as string]
+            ["three" :as three]))
 
 (defonce ^:private contexts (array))
 
-(deftype Context [^vscene/Scene virtualScene
-                       ^vscene/Node sceneRoot
-                       ^js domRoot
-                       ^js animateFn
-                       ^js canvas
-                       ^js camera
-                       ^js cameras
-                       ^js clock
-                       ^js renderer
-                       ^js beforeRenderCb
-                       ^js afterRenderCb]
-    Object)
+(defn- raw-context->context [^Context raw-ctx]
+  {:threejs-renderer (.-renderer raw-ctx)
+   :threejs-scene (.-sceneRoot raw-ctx)
+   :canvas (.-canvas raw-ctx)})
 
 (defn- create-object [node-data]
   (let [comp-config (:component-config node-data)
@@ -31,9 +25,12 @@
     (when (:receive-shadow node-data) (threejs/set-receive-shadow! obj (:receive-shadow node-data)))
     obj))
 
-(defn- set-node-object [^Context context ^vscene/Node node node-data obj]
+(defn- set-node-object [^Context context ^vscene/Node node obj]
   (set! (.-threejs node) obj)
   (when (.-isCamera obj)
+    (when (.-active obj)
+      (set! (.-lastCamera context) (.-camera context))
+      (set! (.-camera context) obj))
     (.push (.-cameras context) obj)))
 
 (defn- add-node [^Context context parent-object ^vscene/Node node]
@@ -41,29 +38,32 @@
     (let [node-data (.-data node)
           comp-config (:component-config node-data)
           obj (create-object node-data)]
-      (set-node-object context node node-data obj)
+      (set-node-object context node obj)
       (.add parent-object obj)
       (.for-each-child node (partial add-node context obj))
       (.dispatchEvent obj #js {:type "on-added"})
       (when-let [callback (:on-added (.-meta node))]
         (callback obj))
+      (systems/dispatch-on-added context (.-id node) obj comp-config)
       obj)
     (catch :default e
-      (log "Failed to add node")
-      (log e)
-      (println node))))
+      (js/console.error "Failed to add node:")
+      (js/console.error (clj->js {:node node :error e})))))
 
 (defn- on-object-removed [^Context context ^vscene/Node node ^js obj]
   (.dispatchEvent obj #js {:type "on-removed"})
   (when-let [callback (:on-removed (.-meta node))]
     (callback obj))
   (when (.-isCamera obj)
+    (when (.-active obj)
+      (set! (.-camera context) (.-lastCamera context)))
     (let [cams (.-cameras context)]
       (.splice cams (.indexOf cams obj) 1))))
 
 (defn- remove-node! [^Context context ^vscene/Node node]
   (let [obj (.-threejs node)
-        parent-obj ^js (.-threejs (.-parent node))]
+        parent-obj ^three/Object3D (.-threejs (.-parent node))]
+    (systems/dispatch-on-removed context (.-id node) obj (:component-config (.-data node)))
     (on-object-removed context node obj)
     (.remove parent-obj obj)
     (.for-each-child node (partial remove-node! context))))
@@ -95,20 +95,21 @@
     (if this
       ;; Fully reconstruct scene object
       (try
-        (let [[o n] this
-              parent-obj (.-parent old-obj)
+        (let [parent-obj (.-parent old-obj)
               children (.-children old-obj)
               new-obj (create-object new-data)]
+          (systems/dispatch-on-removed context (.-id node) old-obj (:component-config old-data))
           (on-object-removed context node old-obj)
-          (set-node-object context node new-data new-obj)
+          (set-node-object context node new-obj)
           (.remove parent-obj old-obj)
           (.add parent-obj new-obj)
           (when-not (.terminal? node)
-            (doseq [child children]
+            (doseq [child (aclone children)]
               (.add new-obj child)))
           (.dispatchEvent new-obj #js {:type "on-added"})
           (when-let [callback (:on-added metadata)]
-            (callback new-obj)))
+            (callback new-obj))
+          (systems/dispatch-on-added context (.-id node) new-obj (:component-config new-data)))
         (catch :default ex
           (log "Failed to update node due to error")
           (log ex)
@@ -136,13 +137,6 @@
   (doseq [change changelog]
     (apply-change! context change)))
 
-(defn- find-active-camera [^Context context]
-  (or
-   (->> (.-cameras context)
-        (filter #(.-active %))
-        (last))
-   (.-camera context)))
-
 (defn- animate [^Context context]
   (let [stats (.-stats context)
         clock (.-clock context)
@@ -156,6 +150,7 @@
       (.begin stats))
     (let [delta-time (.getDelta clock)
           changelog (array)]
+      (systems/dispatch-on-tick context delta-time)
       ;; Invoke callbacks
       (when before-render-cb (before-render-cb delta-time))
       ;; Render virtual scene
@@ -163,7 +158,7 @@
       ;; Apply virtual scene changes to ThreeJs scene
       (apply-virtual-scene-changes! context changelog)
       ;; Fetch camera after applying the scene changes since it might have been updated
-      (let [camera (find-active-camera context)]
+      (let [camera (.-camera context)]
         ;; Render ThreeJS Scene
         (if composer
           (.render composer delta-time)
@@ -173,7 +168,7 @@
       (.end stats))))
 
 (defn- get-canvas [dom-root]
-  (if (= "canvas" (clojure.string/lower-case (.-tagName dom-root)))
+  (if (= "canvas" (string/lower-case (.-tagName dom-root)))
     dom-root
     (let [c (.createElement js/document "canvas")]
       (.appendChild dom-root c))))
@@ -185,11 +180,14 @@
       (set! (.-type sm) (or (:type shadow-map)
                             three/PCFShadowMap)))))
 
-(defn- ^Context create-context [root-fn dom-root on-before-render-cb on-after-render-cb shadow-map]
+
+(defn- ^Context create-context [root-fn dom-root {:keys [on-before-render
+                                                         on-after-render
+                                                         shadow-map
+                                                         systems]}]
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
-        virtual-scene (vscene/create root-fn)
         renderer (new three/WebGLRenderer (clj->js {:canvas canvas}))
         camera (three/PerspectiveCamera. 75 (/ width height) 0.1 1000)
         cameras (array)
@@ -197,45 +195,56 @@
         clock (new three/Clock)]
     (.setSize renderer width height)
     (set-shadow-map! renderer shadow-map)
-    (let [context (Context. virtual-scene
+    ;; Systems are initialized before first virtual-render
+    (systems/dispatch-init systems {:threejs-renderer renderer
+                                    :threejs-scene scene-root
+                                    :canvas canvas})
+    (let [virtual-scene (vscene/create root-fn)
+          context (Context. virtual-scene
                                  scene-root
                                  dom-root nil
                                  canvas camera cameras
-                                 clock renderer on-before-render-cb on-after-render-cb)]
-      (set! (.-animateFn context) #(animate context))
+                                 clock renderer
+                                 on-before-render
+                                 on-after-render
+                                 systems)]
       (init-scene context virtual-scene scene-root)
       (.push contexts context)
+      (.setAnimationLoop renderer #(animate context))
       context)))
 
 (defn- remove-all-children! [^Context context ^vscene/Node vscene-root]
-  (.for-each-child vscene-root (partial remove-node! context)))
+  (.for-each-child vscene-root (partial remove-node! context))
+  (.clear (.-sceneRoot context)))
 
-(defn- reset-context! [^Context context root-fn {:keys [on-before-render on-after-render shadow-map]}]
-  (let [scene-root ^js (.-sceneRoot context)
-        virtual-scene ^vscene/Scene (.-virtualScene context)
-        new-virtual-scene (vscene/create root-fn)
-        renderer ^js (.-renderer context)]
-    (remove-all-children! context (.-root virtual-scene))
+(defn- reset-context! [^Context old-context root-fn {:keys [on-before-render on-after-render shadow-map systems]}]
+  (let [scene-root        ^js (.-sceneRoot old-context)
+        virtual-scene     ^vscene/Scene (.-virtualScene old-context)
+        renderer          ^js (.-renderer old-context)]
+    (systems/dispatch-destroy (.-systems old-context)
+                              (raw-context->context old-context))
+    (remove-all-children! old-context (.-root virtual-scene))
     (vscene/destroy! virtual-scene)
     (set-shadow-map! renderer shadow-map)
-    (set! (.-cameras context) (array))
-    (init-scene context new-virtual-scene scene-root)
-    (set! (.-virtualScene context) new-virtual-scene)
-    (set! (.-beforeRenderCb context) on-before-render)
-    (set! (.-afterRenderCb context) on-after-render)
-    context))
+    (set! (.-cameras old-context) (array))
+    (set! (.-systems old-context) systems)
+    (systems/dispatch-init systems {:threejs-renderer renderer
+                                    :threejs-scene scene-root
+                                    :canvas (.-canvas old-context)})
+    (let [new-virtual-scene (vscene/create root-fn)]
+      (init-scene old-context new-virtual-scene scene-root)
+      (set! (.-virtualScene old-context) new-virtual-scene)
+      (set! (.-beforeRenderCb old-context) on-before-render)
+      (set! (.-afterRenderCb old-context) on-after-render)
+      old-context)))
 
 (defn- find-context [dom-root]
   (first (filter #(= (.-domRoot ^js %) dom-root) contexts)))
 
-(defn ^Context render [root-fn
-                       dom-root
-                       {:keys [on-before-render
-                               on-after-render
-                               shadow-map] :as config}]
+(defn- create-or-reset-context [root-fn dom-root config]
   (if-let [existing-context (find-context dom-root)]
     (reset-context! existing-context root-fn config)
-    (let [context (create-context root-fn dom-root on-before-render on-after-render shadow-map)
-          renderer ^js (.-renderer context)]
-      (.setAnimationLoop renderer (.-animateFn context))
-      context)))
+    (create-context root-fn dom-root config)))
+
+(defn render [root-fn dom-root config]
+  (raw-context->context (create-or-reset-context root-fn dom-root config)))

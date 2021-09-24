@@ -27,3 +27,5 @@ pom.xml.asc
 .hg/
 
 reports
+
+.lsp/

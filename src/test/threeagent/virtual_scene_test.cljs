@@ -59,15 +59,15 @@
           changelog (array)
           before (.-data (vscene/get-in-scene scene [0 0 0 0]))]
       (swap! test-state assoc :value true)
-      (vscene/print-tree (.-root scene))
+      ;(vscene/print-tree (.-root scene))
       (vscene/render! scene changelog)
-      (vscene/print-tree (.-root scene))
+      ;(vscene/print-tree (.-root scene))
       (let [after (.-data (vscene/get-in-scene scene [0 0 0 0]))]
           (is (= :fn-result-before (:component-key before)))
           (is (= :fn-result-after (:component-key after))))
       (swap! test-state assoc :value false)
       (vscene/render! scene changelog)
-      (vscene/print-tree (.-root scene))
+      ;(vscene/print-tree (.-root scene))
       (is (= :fn-result-before  (:component-key (.-data (vscene/get-in-scene scene [0 0 0 0])))))))
   (testing "Replacing a fn call with a different fn"
     (let [test-state (th/atom {:value nil})

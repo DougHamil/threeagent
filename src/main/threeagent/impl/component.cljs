@@ -120,6 +120,7 @@
                                height 1.0
                                radial-segments 8
                                height-segments 1
+                               open-ended? false
                                cast-shadow false
                                receive-shadow false
                                theta-start 0
@@ -255,21 +256,30 @@
                                                 :height 512}
                                      :focus 1.0
                                      :camera {:near 0.5
-                                              :far 500}})
-(defn- apply-shadow-settings [light cast-shadow shadow-cfg]
-  (set! (.-castShadow light) cast-shadow)
-  (when cast-shadow
+                                              :far 500
+                                              :left -5
+                                              :right 5
+                                              :top 5
+                                              :bottom -5}})
+(defn- apply-shadow-settings [light shadow-cfg]
+  (when shadow-cfg
     (let [shadow (.-shadow light)
+          camera-obj (.-camera shadow)
           map-size (merge (:map-size default-light-shadow)
                           (:map-size shadow-cfg))
           camera (merge (:camera default-light-shadow)
                         (:camera shadow-cfg))]
       (set! (.-width (.-mapSize shadow)) (:width map-size))
       (set! (.-height (.-mapSize shadow)) (:height map-size))
-      (set! (.-near (.-camera shadow)) (:near camera))
-      (set! (.-far (.-camera shadow)) (:far camera))
+      (set! (.-near camera-obj) (:near camera))
+      (set! (.-far camera-obj) (:far camera))
+      (set! (.-left camera-obj) (:left camera))
+      (set! (.-right camera-obj) (:right camera))
+      (set! (.-top camera-obj) (:top camera))
+      (set! (.-bottom camera-obj) (:bottom camera))
       (set! (.-focus shadow) (or (:focus shadow-cfg)
-                                 (:focus default-light-shadow)))))
+                                 (:focus default-light-shadow)))
+      (.updateProjectionMatrix camera-obj)))
   light)
 
 (defcomponent :ambient-light [{:keys [color intensity]
@@ -286,7 +296,7 @@
                                   distance 0
                                   decay 1.0}}]
   (apply-shadow-settings (three/PointLight. color intensity distance decay)
-                         cast-shadow shadow))
+                         shadow))
 
 (defcomponent :hemisphere-light [{:keys [sky-color ground-color intensity]
                                   :or {sky-color 0xFFFFFF
@@ -295,13 +305,15 @@
   (three/HemisphereLight. sky-color ground-color intensity))
 
 (defcomponent :directional-light [{:keys [color intensity
+                                          target
                                           cast-shadow shadow]
                                    :or {color 0xFFFFFF
-                                        cast-shadow false
                                         shadow nil
                                         intensity 1.0}}]
-  (apply-shadow-settings (three/DirectionalLight. color intensity)
-                         cast-shadow shadow))
+  (let [light ^js (three/DirectionalLight. color intensity)]
+    (when target
+      (set! (.-target light) target))
+    (apply-shadow-settings light shadow)))
 
 (defcomponent :rect-area-light [{:keys [color intensity width height]
                                  :or {color 0xFFFFFF
@@ -321,7 +333,7 @@
                                  penumbra 0.0
                                  decay 1.0}}]
   (apply-shadow-settings (three/SpotLight. color intensity distance angle penumbra decay)
-                         cast-shadow shadow))
+                         shadow))
 
 
 ;; Text

@@ -34,3 +34,29 @@
         (is (= :object (:component-key before)))
         (is (= :object (:component-key after)))))))
 
+(defn sub3 [v]
+   [:object {:test v}])
+
+(defn sub2 [state]
+  [:object {:position [0 0 0]
+            :test @(th/cursor state [:test-value])}
+   [:object {:test "first-child"}
+    [sub3 "test"]]
+   [:object {:test "second-child"}
+    [:object {:test "third child"}]]])
+
+(defn root2 [state]
+  [:object
+   [sub2 state]])
+
+
+(deftest reactive-rerender-parent-with-two-subobjects
+  (let [test-state (th/atom {:test-value 1})
+        scene (vscene/create (partial root2 test-state))
+        changelog (array)
+        before (vscene/get-in-scene scene [0 0 0 0])]
+    (is (= 2 (.-size (.-children before))))
+    (swap! test-state assoc :test-value 2)
+    (vscene/render! scene changelog)
+    (let [after (vscene/get-in-scene scene [0 0 0 0])]
+      (is (= 2 (.-size (.-children after)))))))

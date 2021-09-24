@@ -1,21 +1,22 @@
 (ns threeagent.impl.virtual-scene
-  (:require [threeagent.impl.util :refer [log]]
-            [medley.core :as medley]
+  (:require [medley.core :as medley]
+            [clojure.set :as set]
             [reagent.ratom :as ratom]
             [reagent.core :as reagent])
   (:import [goog.structs PriorityQueue]))
 
-(defonce ^:private non-component-keys #{:position :rotation :scale :cast-shadow :receive-shadow})
+(defonce ^:private non-component-keys #{:position :rotation :scale})
 
 (defn print-tree
   ([^Node node]
    (print-tree node ""))
   ([^Node node p]
    (let [is-reactive (and (some? (.-reactions node))
-                          (not (empty? (.-reactions node))))]
+                          (seq (.-reactions node)))]
      (println p "|-"
               (.-key node)
               (str "comp:" (:component-key (.-data node)))
+              (str "id:" (:id (.-data node)))
               (str "dirty:" (.-dirty node))
               (str "reactive:" is-reactive))
      (doseq [child (es6-iterator-seq (.values (.-children node)))]
@@ -34,11 +35,11 @@
 (deftype RenderQueueEntry [^Node node ^js renderFn ^js forceReplace]
   Object)
 
-(deftype Node [^Node parent depth key meta data dirty render reaction children]
+(deftype Node [^Node parent depth id key meta data dirty render reaction children]
   Object
-  (terminal? [this]
+  (terminal? [_this]
     (= 0 (.-size children)))
-  (for-each-child [this f]
+  (for-each-child [_this f]
     (doseq [child (es6-iterator-seq (.values children))]
       (f child))))
 
@@ -70,6 +71,7 @@
    :scale (:scale comp-config [1.0 1.0 1.0])
    :cast-shadow (:cast-shadow comp-config false)
    :receive-shadow (:receive-shadow comp-config false)
+   :id (:id comp-config)
    :component-key comp-key
    :component-config (extract-comp-config comp-config)}) ;(apply dissoc comp-config non-component-keys)})
 
@@ -101,7 +103,10 @@
         depth (if parent
                 (inc (.-depth parent))
                 0)
-        node (Node. parent depth key metadata data false nil nil children-map)]
+        node (Node. parent depth (:id comp-config) key metadata data false nil nil children-map)]
+    (if (not (or (string? key)
+                 (number? key)))
+      (throw (str "^:key must be a string or number, found: " key)))
     (doseq [[idx child] (medley/indexed children)]
       (when-let [child-node (->node scene node idx child)]
         (.set children-map (.-key child-node) child-node)))
@@ -112,7 +117,6 @@
     (with-meta
       [:object (apply f args)]
       original-meta)))
-  
 
 (defmethod ->node :fn [scene parent key form]
   (let [key (or (:key (meta form)) key)
@@ -181,7 +185,7 @@
   (let [[comp-key & rs] form
         first-child (first rs)
         comp-config (if (map? first-child) first-child {})
-        children (filter #(and (some? %) (not (empty? %)))
+        children (filter #(and (some? %) (seq %))
                          (if (map? first-child) (rest rs) rs))]
     {:key key
      :data (node-data comp-key comp-config)
@@ -203,7 +207,6 @@
 
 (defn- remove-node! [^Node node changelog]
   (.push changelog [node :remove (.-data node) nil])
-  (set! (.-data node) nil)
   (set! (.-dirty node) false)
   (dispose-node! node))
 
@@ -239,14 +242,14 @@
     (let [key (.-key node)
           children (.-children node)
           old-data (.-data node)
+          current-keys (set (es6-iterator-seq (.keys children)))
           rendered-form (if render-fn
                           (apply render-fn (rest new-form))
                           new-form)
           shallow-node (->node-shallow key rendered-form)
           new-data (:data shallow-node)
-          current-keys (set (es6-iterator-seq (.keys children)))
           new-keys (set (map first (:children-keys shallow-node)))
-          dropped-keys (clojure.set/difference current-keys new-keys)]
+          dropped-keys (set/difference current-keys new-keys)]
       (set! (.-data node) new-data)
       (set! (.-meta node) (meta new-form))
       (set! (.-lastForm node) new-form)
@@ -284,10 +287,9 @@
     (loop [entry ^RenderQueueEntry (.dequeue queue)]
       (when entry
         (when-let [node ^Node (.-node entry)]
-          (do
-            (when-not (.-disposed node)
-              (render-node! scene node (.-renderFn entry) (.-forceReplace entry) changelog))
-            (recur ^RenderQueueEntry (.dequeue queue))))))))
+          (when-not (.-disposed node)
+            (render-node! scene node (.-renderFn entry) (.-forceReplace entry) changelog))
+          (recur ^RenderQueueEntry (.dequeue queue)))))))
 
 (defn destroy! [^Scene scene]
   (dispose-node! (.-root scene)))
