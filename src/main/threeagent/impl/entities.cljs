@@ -150,7 +150,7 @@
                                                   (or width-segments 8)
                                                   (or height-segments 6)
                                                   (or phi-start 0)
-                                                  (or phi-length pi)
+                                                  (or phi-length pi-times-2)
                                                   (or theta-start 0)
                                                   (or theta-length pi))))
    :cylinder (->MeshEntity (fn [{:keys [radius-top radius-bottom height radial-segments
