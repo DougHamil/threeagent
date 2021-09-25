@@ -1,5 +1,5 @@
 (ns threeagent.e2e.system-test
-  (:require [cljs.test :refer-macros [deftest is async use-fixtures]]
+  (:require [cljs.test :refer-macros [deftest is use-fixtures]]
             [threeagent.e2e.fixture :as fixture]
             [threeagent.system :refer [ISystem]]
             [threeagent.core :as th]))
