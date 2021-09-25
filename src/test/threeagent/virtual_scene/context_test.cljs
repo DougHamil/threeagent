@@ -44,8 +44,12 @@
 
 (deftest context-forces-replacement-test
   (let [state (th/atom :a)
+        child-2-fn (fn []
+                     [:object {:id "c"}])
         child-fn (fn []
-                   [:object {:id "b"}])
+                   [:object {:id "b"}
+                    [{:test2 "test2"}
+                     [child-2-fn]]])
         root-fn (fn []
                   [:object {:id "a"}
                    [{:test @state}
@@ -55,6 +59,10 @@
         changelog (array)]
     (is (= {} (get-ctx "a")))
     (is (= {:test :a} (get-ctx "b")))
+    (is (= {:test :a
+            :test2 "test2"} (get-ctx "c")))
     (reset! state :b)
     (vscene/render! scene changelog)
-    (is (= {:test :b} (get-ctx "b")))))
+    (is (= {:test :b} (get-ctx "b")))
+    (is (= {:test :b
+            :test2 "test2"} (get-ctx "c")))))
