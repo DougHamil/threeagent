@@ -1,5 +1,5 @@
 (ns threeagent.e2e.callback-test
-  (:require [cljs.test :refer-macros [deftest is use-fixtures testing]]
+  (:require [cljs.test :refer-macros [deftest is use-fixtures]]
             [threeagent.e2e.fixture :as fixture]
             [threeagent.core :as th]))
 
@@ -7,7 +7,7 @@
 
 (use-fixtures :each (fixture/with-canvas canvas))
 
-(deftest callaback-test
+(deftest callback-test
   (let [ref-state (atom nil)
         on-added-state (atom nil)
         on-removed-state (atom nil)
