@@ -10,8 +10,7 @@
         (let [cb (system-protocol/on-entity-added sys key obj v)]
           (when (fn? cb)
             (.push callbacks cb)))))
-    (doseq [cb callbacks]
-      (cb))))
+    callbacks))
 
 (defn dispatch-on-removed [^Context context key ^js obj node-config]
   (let [systems (.-systems context)
@@ -21,8 +20,7 @@
         (let [cb (system-protocol/on-entity-removed sys key obj v)]
           (when (fn? cb)
             (.push callbacks cb)))))
-    (doseq [cb callbacks]
-      (cb))))
+    callbacks))
 
 (defn dispatch-on-tick [^Context context delta-time]
   (doseq [[_ system] (.-systems context)]

@@ -25,12 +25,13 @@
     (callback old-obj))
   (when-let [on-removed (:on-removed old-component-config)]
     (on-removed old-obj))
-  (systems/dispatch-on-removed ctx (.-id node) old-obj old-component-config)
-  (when (.-isCamera old-obj)
-    (when (.-active old-obj)
-      (set! (.-camera ctx) (.-lastCamera ctx)))
-    (let [cams (.-cameras ctx)]
-      (.splice cams (.indexOf cams old-obj) 1))))
+  (let [callbacks (systems/dispatch-on-removed ctx (.-id node) old-obj old-component-config)]
+    (when (.-isCamera old-obj)
+      (when (.-active old-obj)
+        (set! (.-camera ctx) (.-lastCamera ctx)))
+      (let [cams (.-cameras ctx)]
+        (.splice cams (.indexOf cams old-obj) 1)))
+    callbacks))
 
 (defn- on-entity-added [^Context ctx ^vscene/Node node ^three/Object3D obj component-config]
   ;; Lifecycle Hooks
@@ -38,12 +39,13 @@
     (callback obj))
   (when-let [on-added (:on-added component-config)]
     (on-added obj))
-  (systems/dispatch-on-added ctx (.-id node) obj component-config)
-  (when (.-isCamera obj)
-   (when (.-active obj)
-     (set! (.-lastCamera ctx) (.-camera ctx))
-     (set! (.-camera ctx) obj))
-   (.push (.-cameras ctx) obj)))
+  (let [callbacks (systems/dispatch-on-added ctx (.-id node) obj component-config)]
+    (when (.-isCamera obj)
+      (when (.-active obj)
+        (set! (.-lastCamera ctx) (.-camera ctx))
+        (set! (.-camera ctx) obj))
+      (.push (.-cameras ctx) obj))
+    callbacks))
 
 (defn- create-entity-object [^Context ctx ^vscene/Node node]
   (let [{:keys [component-config
@@ -59,31 +61,32 @@
     obj))
   
 (defn- create-entity
-  "Create an entity"
   [^Context ctx ^three/Object3D parent-object ^vscene/Node node]
   (let [{:keys [component-config]} (.-data node)
         obj (create-entity-object ctx node)]
     (.add parent-object obj)
     (set! (.-threejs node) obj)
-    (on-entity-added ctx node obj component-config)
-    (.for-each-child node (partial create-entity ctx obj))
+    (let [post-added-fns (on-entity-added ctx node obj component-config)]
+      (.for-each-child node (partial create-entity ctx obj))
+      (doseq [cb post-added-fns]
+        (cb)))
     obj))
 
 (defn- destroy-entity
-  "Destroy an entity"
   [^Context ctx ^vscene/Node node]
-  (.for-each-child node (partial destroy-entity ctx))
   (let [{:keys [component-key
                 component-config]} (.-data node)
         entity-type (get (.-entityTypes ctx) component-key)
         obj  ^three/Object3D (.-threejs node)]
-    (on-entity-removed ctx node obj component-config)
-    (when-let [parent (.-parent obj)]
-      (.remove parent obj))
+    (let [post-removed-fns (on-entity-removed ctx node obj component-config)]
+      (.for-each-child node (partial destroy-entity ctx))
+      (doseq [cb post-removed-fns]
+        (cb))
+      (when-let [parent (.-parent obj)]
+        (.remove parent obj)))
     (entity/destroy! entity-type obj)))
 
 (defn- update-entity
-  "Update an entity in-place"
   [^Context ctx ^vscene/Node node old-data new-data]
   (let [{:keys [component-config
                 component-key
@@ -92,16 +95,17 @@
                 scale]} new-data
         entity-type (get (.-entityTypes ctx) component-key)
         obj  ^three/Object3D (.-threejs node)]
-    (on-entity-removed ctx node obj (:component-config old-data))
+    (doseq [cb (on-entity-removed ctx node obj (:component-config old-data))]
+      (cb))
     (entity/update! entity-type obj component-config)
     (threejs/set-position! obj position)
     (threejs/set-rotation! obj rotation)
     (threejs/set-scale! obj scale)
-    (on-entity-added ctx node obj component-config)
+    (doseq [cb (on-entity-added ctx node obj component-config)]
+      (cb))
     obj))
 
 (defn- transform-entity
-  "Update the transformations of the entity in-place"
   [^Context _ctx ^vscene/Node node]
   (let [{:keys [position
                 rotation

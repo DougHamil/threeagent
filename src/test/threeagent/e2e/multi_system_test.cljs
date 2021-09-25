@@ -32,21 +32,20 @@
       #(swap! state disj entity-id)))
   (tick [_ _]))
 
-(defn root [state]
-  [:object
-   (when @state
-     [:object {:attach-state {}
-               :use-state {:entity-id "root"}}])])
-
 (deftest after-method-test []
   (testing "any fn returned from a method is invoked after all other systems have executed"
     (let [sys-state (atom #{})
           init-state (atom [])
           state (th/atom true)
           systems {:use-state (->UseStateSystem init-state)
-                   :attach-state (->AttachStateSystem init-state sys-state)}]
+                   :attach-state (->AttachStateSystem init-state sys-state)}
+          root-fn (fn []
+                    [:object
+                     (when @state
+                       [:object {:attach-state {}
+                                 :use-state {:entity-id "root"}}])])]
       (fixture/async-run! [{:when (fn []
-                                    (th/render (partial root state) @canvas {:systems systems}))
+                                    (th/render root-fn @canvas {:systems systems}))
                             :then (fn []
                                     (is (= [:attach :use] @init-state))
                                     (is (= #{"root"} @sys-state)))}
@@ -54,3 +53,4 @@
                                     (reset! state false))
                             :then (fn []
                                     (is (= #{} @sys-state)))}]))))
+

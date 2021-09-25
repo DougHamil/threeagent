@@ -37,8 +37,9 @@
      `threejs-obj`: the ThreeJS object instance for this entity 
      `config`: this entity's configuration value for this system's key
 
-     If the returned value is a function, it will be invoked immediately after all remaining
-     `ISystem/on-entity-added` have been invoked for this entity. Otherwise, the returned value is ignored.
+     If the returned value is a function, it will be invoked after all remaining
+     `ISystem/on-entity-added` have been invoked for this entity and it's children. 
+     Otherwise, the returned value is ignored.
     ")
   (on-entity-removed [this id ^js threejs-obj config]
     "
@@ -47,8 +48,9 @@
      `threejs-obj`: the ThreeJS object instance for this entity 
      `config`: this entity's configuration value for this system's key
 
-     If the returned value is a function, it will be invoked immediately after all remaining
-     `ISystem/on-entity-removed` have been invoked for this entity. Otherwise, the returned value is ignored.
+     If the returned value is a function, it will be invoked after all remaining
+     `ISystem/on-entity-removed` have been invoked for this entity and it's children.
+     Otherwise, the returned value is ignored.
     ")
   (tick [this delta-time]
     "
