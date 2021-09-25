@@ -1,4 +1,4 @@
-(ns threeagent.parent-transform-update-test
+(ns threeagent.virtual-scene.parent-transform-update-test
   (:require [cljs.test :refer-macros [deftest is testing]]
             [threeagent.impl.virtual-scene :as vscene]
             [threeagent.core :as th]))

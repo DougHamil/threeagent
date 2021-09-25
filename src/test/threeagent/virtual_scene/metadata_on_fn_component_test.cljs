@@ -1,11 +1,10 @@
-(ns threeagent.metadata-on-fn-component-test
+(ns threeagent.virtual-scene.metadata-on-fn-component-test
   (:require [cljs.test :refer-macros [deftest is testing]]
             [threeagent.impl.virtual-scene :as vscene]
             [threeagent.core :as th]))
 
 (defn- fn-a [_])
 (defn- fn-b [_])
-
 
 (defn child-component [state entity]
   (fn [_ _]
