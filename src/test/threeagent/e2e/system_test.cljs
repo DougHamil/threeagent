@@ -1,5 +1,5 @@
-(ns threeagent.system-test
-  (:require [cljs.test :refer-macros [deftest is testing async]]
+(ns threeagent.e2e.system-test
+  (:require [cljs.test :refer-macros [deftest is async]]
             [threeagent.system :refer [ISystem]]
             [threeagent.threejs.util :refer [create-canvas]]
             [threeagent.core :as th]))

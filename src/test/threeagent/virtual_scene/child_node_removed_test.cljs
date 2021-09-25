@@ -1,4 +1,4 @@
-(ns threeagent.child-node-removed-test
+(ns threeagent.virtual-scene.child-node-removed-test
   (:require [cljs.test :refer-macros [deftest is testing]]
             [threeagent.impl.virtual-scene :as vscene]
             [threeagent.core :as th]))

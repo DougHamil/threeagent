@@ -1,4 +1,4 @@
-(ns threeagent.virtual-scene-test
+(ns threeagent.virtual-scene.virtual-scene-test
   (:require [cljs.test :refer-macros [deftest is testing]]
             [threeagent.impl.virtual-scene :as vscene]
             [threeagent.core :as th]))

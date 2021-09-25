@@ -1,11 +1,9 @@
-(ns threeagent.threejs.nested-objects-test
-  (:require [cljs.test :refer-macros [deftest is testing async]]
+(ns threeagent.e2e.nested-objects-test
+  (:require [cljs.test :refer-macros [deftest is async]]
             [threeagent.threejs.util :refer [create-canvas get-in-scene child-count]]
             [threeagent.core :as th]))
 
 (def state (th/atom {:test-value 1}))
-
-
 
 (defn sub3 [v]
    [:object {:test v}])

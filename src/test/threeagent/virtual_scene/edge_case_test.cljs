@@ -1,4 +1,4 @@
-(ns threeagent.edge-case-test
+(ns threeagent.virtual-scene.edge-case-test
   (:require [cljs.test :refer-macros [deftest is testing]]
             [threeagent.impl.virtual-scene :as vscene]
             [threeagent.core :as th]))

@@ -17,7 +17,7 @@
 
 (defn- in-place-update? [^Context ctx ^vscene/Node node]
   (let [entity-type (get (.-entityTypes ctx) (:component-key (.-data node)))]
-    (satisfies? entity/IUpdateableEntity entity-type)))
+    (satisfies? entity/IUpdateableEntityType entity-type)))
 
 (defn- on-entity-removed [^Context ctx ^vscene/Node node ^three/Object3D old-obj old-component-config]
   ;; Lifecycle Hooks
@@ -78,7 +78,8 @@
         entity-type (get (.-entityTypes ctx) component-key)
         obj  ^three/Object3D (.-threejs node)]
     (on-entity-removed ctx node obj component-config)
-    (.remove (.-parent obj) obj)
+    (when-let [parent (.-parent obj)]
+      (.remove parent obj))
     (entity/destroy! entity-type obj)))
 
 (defn- update-entity

@@ -1,7 +1,7 @@
 (ns threeagent.impl.entities
-  "Defines all of the built-in IEntity types.
+  "Defines all of the built-in IEntityType types.
   This namespace is meant for internal use only, these functions are subject to change."
-  (:require [threeagent.entity :refer [IEntity IUpdateableEntity]]
+  (:require [threeagent.entity :refer [IEntityType IUpdateableEntityType]]
             [threeagent.impl.threejs :as threejs]
             [threeagent.impl.util :refer [pi pi-times-2 pi-over-2]]
             ["three" :as three]
@@ -17,7 +17,7 @@
     (material-cache config)))
 
 (deftype MeshEntity [geo-fn]
-  IEntity
+  IEntityType
   (create [_ config]
     (let [geo (geo-fn config)
           mat (->material (:material config))
@@ -26,7 +26,7 @@
       (set! (.-receiveShadow mesh) (:receive-shadow config))
       mesh))
   (destroy! [_ _])
-  IUpdateableEntity
+  IUpdateableEntityType
   (update! [_ ^three/Mesh mesh config]
     (let [geo (geo-fn config)
           mat (->material (:material config))]
@@ -68,13 +68,18 @@
   light)
 
 (deftype LightEntity [create-fn update-fn]
-  IEntity
+  IEntityType
   (create [_ cfg]
-    (apply-shadow-settings! (create-fn cfg) (:shadow cfg)))
+    (let [light (create-fn cfg)]
+      (set! (.-castShadow light) (:cast-shadow cfg))
+      (set! (.-receiveShadow light) (:receive-shadow cfg))
+      (apply-shadow-settings! light (:shadow cfg))))
   (destroy! [_ _])
-  IUpdateableEntity
+  IUpdateableEntityType
   (update! [_ ^three/Light obj cfg]
     (update-fn obj cfg)
+    (set! (.-castShadow obj) (:cast-shadow cfg))
+    (set! (.-receiveShadow obj) (:receive-shadow cfg))
     (apply-shadow-settings! obj (:shadow cfg))))
 
 (defn- apply-props-clj! [^js obj properties]
@@ -84,23 +89,23 @@
 
 (def builtin-entity-types
   {;; Common
-   :object (reify IEntity
+   :object (reify IEntityType
              (create [_ _] (three/Object3D.))
              (destroy! [_ _])
-             IUpdateableEntity
+             IUpdateableEntityType
              (update! [_ obj _] obj))
-   :group (reify IEntity
+   :group (reify IEntityType
             (create [_ _] (three/Group.))
             (destroy! [_ _])
-            IUpdateableEntity
+            IUpdateableEntityType
             (update! [_ obj _] obj))
-   :instance (reify IEntity
+   :instance (reify IEntityType
                (create [_ {:keys [object]}]
                  object)
                (destroy! [_ _]))
 
    ;; Cameras
-   :perspective-camera (reify IEntity
+   :perspective-camera (reify IEntityType
                          (create [_ cfg]
                            (let [cam (three/PerspectiveCamera. 75.0 1.0 0.1 2000.0)]
                              (set! (.-active cam) true)
@@ -108,12 +113,12 @@
                              (.updateProjectionMatrix cam)
                              cam))
                          (destroy! [_ _])
-                         IUpdateableEntity
+                         IUpdateableEntityType
                          (update! [_ ^three/PerspectiveCamera o cfg]
                            (apply-props-clj! o cfg)
                            (.updateProjectionMatrix o)
                            o))
-   :orthographic-camera (reify IEntity
+   :orthographic-camera (reify IEntityType
                           (create [_ cfg]
                             (let [cam (three/OrthographicCamera. -1 1 1 -1 0.1 2000.0)]
                               (set! (.-active cam) true)
@@ -121,7 +126,7 @@
                               (.updateProjectionMatrix cam)
                               cam))
                           (destroy! [_ _])
-                          IUpdateableEntity
+                          IUpdateableEntityType
                           (update! [_ ^three/OrthographicCamera o cfg]
                             (apply-props-clj! o cfg)
                             (.updateProjectionMatrix o)
@@ -207,32 +212,6 @@
                                                          (or q 3))))
    :shape (->MeshEntity (fn [{:keys [shape]}]
                           (three/ShapeGeometry. shape)))
-   :text (->MeshEntity (fn [{:keys [text] :as cfg}]
-                         (let [default-cfg {:size 100
-                                            :height 50
-                                            :curve-segments 12
-                                            :bevel-enabled false
-                                            :bevel-thickness 10
-                                            :bevel-size 8
-                                            :bevel-offset 0
-                                            :bevel-segments 3}]
-                           (three/TextGeometry. (or text "TEXT")
-                                                (-> (merge default-cfg cfg)
-                                                    (select-keys [:size
-                                                                  :font
-                                                                  :height
-                                                                  :curve-segments
-                                                                  :bevel-enabled
-                                                                  :bevel-thickness
-                                                                  :bevel-size
-                                                                  :bevel-offset
-                                                                  :bevel-segments])
-                                                    (rename-keys {:curve-segments :curveSegments
-                                                                  :bevel-enabled :bevelEnabled
-                                                                  :bevel-size :bevelSize
-                                                                  :bevel-offset :bevelOffset
-                                                                  :bevel-segments :bevelSegments})
-                                                    (clj->js))))))
    ;; Lights
    :ambient-light (->LightEntity
                    (fn [{:keys [intensity color]}]
