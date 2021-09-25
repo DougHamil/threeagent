@@ -35,7 +35,7 @@
 (deftype RenderQueueEntry [^Node node ^js renderFn ^js forceReplace]
   Object)
 
-(deftype Node [^Node parent depth id key meta data dirty render reaction children]
+(deftype Node [context ^Node parent depth id key meta data dirty render reaction children]
   Object
   (terminal? [_this]
     (= 0 (.-size children)))
@@ -45,7 +45,7 @@
 
 (deftype Scene [root renderQueue]
   Object
-  (enqueueForRender [this ^Node node ^js render-fn ^js force-replace?]
+  (enqueueForRender [_ ^Node node ^js render-fn ^js force-replace?]
     (set! (.-dirty node) true)
     (.enqueue renderQueue (.-depth node) (RenderQueueEntry. node render-fn force-replace?))))
 
@@ -75,23 +75,27 @@
    :component-key comp-key
    :component-config (extract-comp-config comp-config)}) ;(apply dissoc comp-config non-component-keys)})
 
-(defmulti ->node (fn [^Scene scene ^Node parent key [l & r]]
+(defmulti ->node (fn [^Scene _scene _context ^Node _parent _key [l & r]]
                    (cond
                      (keyword? l) :keyword
                      (fn? l) :fn
+                     (map? l) :context
                      (sequential? l) :seq
                      (and (nil? l) (nil? r)) :empty-list
                      :else nil)))
 
-(defmethod ->node :default [scene parent key form]
+(defmethod ->node :default [_scene _context _parent _key form]
   (println "Invalid object form:" form))
 
-(defmethod ->node :empty-list [scene parent key form])
+(defmethod ->node :empty-list [_scene _context _parent _key _form])
 
-(defmethod ->node :seq [scene parent key form]
-  (->node scene parent key (with-meta (into [:object] form) (meta form))))
+(defmethod ->node :context [scene context parent key [subcontext & rest]]
+  (->node scene (merge context subcontext) parent key rest))
 
-(defmethod ->node :keyword [scene parent key form]
+(defmethod ->node :seq [scene context parent key form]
+  (->node scene context parent key (with-meta (into [:object] form) (meta form))))
+
+(defmethod ->node :keyword [scene context parent key form]
   (let [[comp-key & rs] form
         first-child (first rs)
         metadata (meta form)
@@ -103,12 +107,12 @@
         depth (if parent
                 (inc (.-depth parent))
                 0)
-        node (Node. parent depth (:id comp-config) key metadata data false nil nil children-map)]
-    (if (not (or (string? key)
-                 (number? key)))
+        node (Node. context parent depth (:id comp-config) key metadata data false nil nil children-map)]
+    (when (not (or (string? key)
+                   (number? key)))
       (throw (str "^:key must be a string or number, found: " key)))
     (doseq [[idx child] (medley/indexed children)]
-      (when-let [child-node (->node scene node idx child)]
+      (when-let [child-node (->node scene context node idx child)]
         (.set children-map (.-key child-node) child-node)))
     node))
 
@@ -118,7 +122,7 @@
       [:object (apply f args)]
       original-meta)))
 
-(defmethod ->node :fn [scene parent key form]
+(defmethod ->node :fn [scene context parent key form]
   (let [key (or (:key (meta form)) key)
         [f & args] form
         original-meta (meta form)
@@ -140,7 +144,7 @@
                                               {:no-cache true}))
         default-render-fn (or inner-render-fn outer-render-fn)
         result (or inner-result outer-result)
-        node ^Node (->node scene parent key (with-meta [:object result] original-meta))]
+        node ^Node (->node scene context parent key (with-meta [:object result] original-meta))]
     (when inner-render-fn
       (set! (.-forceReplace outer-reaction-ctx) true))
     (set! (.-originalFn node) f)
@@ -158,36 +162,40 @@
       (.push (.-reactions node) reaction))
     node))
 
-(defn- form->form-type [[l & r]]
-  (cond
-    (fn? l) :fn
-    (keyword? l) :keyword
-    (sequential? l) :seq
-    (and (nil? l) (nil? r)) :empty-list
-    :else nil))
+(defmulti ->node-shallow (fn [_key _context [l & r]]
+                           (cond
+                             (fn? l) :fn
+                             (keyword? l) :keyword
+                             (map? l) :context
+                             (sequential? l) :seq
+                             (and (nil? l) (nil? r)) :empty-list
+                             :else nil)))
 
-(defmulti ->node-shallow (fn [key f] (form->form-type f)))
+(defmethod ->node-shallow :empty-list [_key _context _form])
 
-(defmethod ->node-shallow :empty-list [key form])
+(defmethod ->node-shallow :context [key context [subcontext & rest]]
+  (->node-shallow key (merge context subcontext) rest))
 
-(defmethod ->node-shallow :fn [key [f & args :as form]]
+(defmethod ->node-shallow :fn [key context form]
   {:key key
+   :context context
    :data (node-data :object {})
    :form form
    :children-keys [[0 form]]})
 
-(defmethod ->node-shallow :seq [key form]
+(defmethod ->node-shallow :seq [key context form]
   (when-not (empty? form)
     (let [m (meta form)]
-      (->node-shallow (get-key key m) (with-meta (into [:object] form) m)))))
+      (->node-shallow (get-key key m) context (with-meta (into [:object] form) m)))))
 
-(defmethod ->node-shallow :keyword [key form]
+(defmethod ->node-shallow :keyword [key context form]
   (let [[comp-key & rs] form
         first-child (first rs)
         comp-config (if (map? first-child) first-child {})
         children (filter #(and (some? %) (seq %))
                          (if (map? first-child) (rest rs) rs))]
     {:key key
+     :context context
      :data (node-data comp-key comp-config)
      :form form
      :children-keys (map-indexed #(vector (or (:key (meta %2)) %1) %2)
@@ -200,8 +208,8 @@
       (ratom/dispose! r)))
   (.for-each-child node dispose-node!))
 
-(defn- add-node! [^Scene scene ^Node parent-node key form changelog]
-  (when-let [node (->node scene parent-node key form)]
+(defn- add-node! [^Scene scene context ^Node parent-node key form changelog]
+  (when-let [node (->node scene context parent-node key form)]
     (.push changelog [node :add nil (.-data node)])
     node))
 
@@ -212,9 +220,11 @@
 
 (defn- replace-node! [^Scene scene ^Node node new-form changelog]
   (let [parent (.-parent node)
+        context (if parent (.-context parent)
+                    {})
         key (.-key node)]
     (remove-node! node changelog)
-    (let [new-node (add-node! scene parent key new-form changelog)]
+    (let [new-node (add-node! scene context parent key new-form changelog)]
       (.set (.-children parent) key new-node))))
 
 (defn- diff-fn? [^Node node new-form]
@@ -241,32 +251,45 @@
             (not (same-args? node new-form)))
     (let [key (.-key node)
           children (.-children node)
+          parent (.-parent node)
           old-data (.-data node)
+          old-context (.-context node)
+          parent-context (if parent
+                           (.-context parent)
+                           {})
+                                      
           current-keys (set (es6-iterator-seq (.keys children)))
           rendered-form (if render-fn
                           (apply render-fn (rest new-form))
                           new-form)
-          shallow-node (->node-shallow key rendered-form)
-          new-data (:data shallow-node)
-          new-keys (set (map first (:children-keys shallow-node)))
+          shallow-node (->node-shallow key parent-context rendered-form)
+          {new-data :data
+           children-keys :children-keys
+           new-context :context} shallow-node
+          new-keys (set (map first children-keys))
           dropped-keys (set/difference current-keys new-keys)]
-      (set! (.-data node) new-data)
-      (set! (.-meta node) (meta new-form))
-      (set! (.-lastForm node) new-form)
-      (.push changelog [node :update old-data new-data])
-      ;; Remove children that no longer exist
-      (doseq [child-key dropped-keys]
-        (let [child-node (.get children child-key)]
-          (remove-node! child-node changelog))
-        (.delete children child-key))
-      ;; Update existing children and add new children
-      (doseq [[child-key child-form] (:children-keys shallow-node)]
-        (if-let [child (.get children child-key)]
-          ;; Update existing child
-          (update-child-node! scene child child-form changelog)
-          ;; Add new child
-          (when-let [child-node (add-node! scene node child-key child-form changelog)]
-            (.set children child-key child-node)))))))
+      (if (not= new-context old-context)
+        ;; Force replacement of node if the context changed
+        (replace-node! scene node new-form changelog)
+        ;; Otherwise, update in-place
+        (do
+          (set! (.-data node) new-data)
+          (set! (.-meta node) (meta new-form))
+          (set! (.-lastForm node) new-form)
+          (.push changelog [node :update old-data new-data])
+          ;; Remove children that no longer exist
+          (doseq [child-key dropped-keys]
+            (let [child-node (.get children child-key)]
+              (remove-node! child-node changelog))
+            (.delete children child-key))
+          ;; Update existing children and add new children
+          (doseq [[child-key child-form] (:children-keys shallow-node)]
+            (if-let [child (.get children child-key)]
+              ;; Update existing child
+              (update-child-node! scene child child-form changelog)
+              ;; Add new child
+              (when-let [child-node (add-node! scene old-context node child-key child-form changelog)]
+                (.set children child-key child-node)))))))))
 
 (defn- render-node! [^Scene scene ^Node node ^js render-fn force-replace? changelog]
   (let [new-form (.-form node)]
@@ -296,6 +319,6 @@
 
 (defn create [root-fn]
   (let [scene (Scene. nil (PriorityQueue.))
-        root-node (->node scene nil 0 [root-fn])]
+        root-node (->node scene {} nil 0 [root-fn])]
     (set! (.-root scene) root-node)
     scene))
