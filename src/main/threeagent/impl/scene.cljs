@@ -39,6 +39,8 @@
     (callback obj))
   (when-let [on-added (:on-added component-config)]
     (on-added obj))
+  (when-let [ref (:ref component-config)]
+    (ref obj))
   (let [callbacks (systems/dispatch-on-added ctx (.-id node) obj component-config)]
     (when (.-isCamera obj)
       (when (.-active obj)
@@ -160,15 +162,18 @@
       :replace-entity (try
                         (replace-entity context node old-data new-data)
                         (catch :default ex
-                          (js/console.error "Failed to replace entity" ex node)))
+                          (js/console.error "Failed to replace entity" ex
+                                            (clj->js (.-data node)))))
       :update-entity (try
                        (update-entity context node old-data new-data)
                        (catch :default ex
-                         (js/console.error "Failed to update entity" ex node)))
+                         (js/console.error "Failed to update entity" ex
+                                            (clj->js (.-data node)))))
       :transform-entity (try
                           (transform-entity context node)
                           (catch :default ex
-                            (js/console.error "Failed to transform entity" ex node))))))
+                            (js/console.error "Failed to transform entity" ex
+                                            (clj->js (.-data node))))))))
 
 (defn- animate [^Context context]
   (let [stats (.-stats context)

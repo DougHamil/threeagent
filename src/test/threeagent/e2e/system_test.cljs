@@ -25,7 +25,6 @@
     [:object {:id "b"
               :custom-system {}}
      (when (:add-third? @state)
-       ^{:key "third"}
        [:object {:id "c"
                  :custom-system {}}])]]])
 

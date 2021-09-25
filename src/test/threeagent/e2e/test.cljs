@@ -3,4 +3,5 @@
             [threeagent.e2e.nested-objects-test]
             [threeagent.e2e.system-test]
             [threeagent.e2e.multi-system-test]
+            [threeagent.e2e.callback-test]
             [threeagent.e2e.system-order-test]))
