@@ -1,7 +1,12 @@
 (ns threeagent.e2e.nested-objects-test
-  (:require [cljs.test :refer-macros [deftest is async]]
-            [threeagent.threejs.util :refer [create-canvas get-in-scene child-count]]
+  (:require [cljs.test :refer-macros [deftest is async use-fixtures]]
+            [threeagent.e2e.fixture :as fixture]
+            [threeagent.threejs.util :refer [get-in-scene child-count]]
             [threeagent.core :as th]))
+
+(defonce canvas (atom nil))
+
+(use-fixtures :each (fixture/with-canvas canvas))
 
 (def state (th/atom {:test-value 1}))
 
@@ -21,18 +26,18 @@
    [sub2]])
 
 (deftest nested-objects-test
-  (async done
-         (let [canvas (create-canvas "nested-objects-test")
-               ctx (th/render root canvas)
-               scene (:threejs-scene ctx)
-               before (get-in-scene scene [0 0 0 0])]
-           (is (= 1 (child-count scene)))
-           (is (= 2 (child-count before)))
-           (swap! state assoc :test-value 2)
-           ;; Wait for re-render
-           (js/setTimeout (fn []
-                            (let [after (get-in-scene scene [0 0 0 0])]
-                              (is (= 2 (child-count after))))
-                            (done))
-                          500))))
+  (let [ctx (th/render root @canvas)
+        scene (:threejs-scene ctx)
+        before (get-in-scene scene [0 0 0 0])]
+    (async done
+           (fixture/async-run! done
+                               [{:when #()
+                                 :then (fn []
+                                         (is (= 1 (child-count scene)))
+                                         (is (= 2 (child-count before))))}
+                                {:when (fn []
+                                         (swap! state assoc :test-value 2))
+                                 :then (fn []
+                                         (let [after (get-in-scene scene [0 0 0 0])]
+                                           (is (= 2 (child-count after)))))}]))))
 

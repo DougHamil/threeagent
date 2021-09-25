@@ -1,8 +1,12 @@
 (ns threeagent.e2e.system-test
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [cljs.test :refer-macros [deftest is async use-fixtures]]
+            [threeagent.e2e.fixture :as fixture]
             [threeagent.system :refer [ISystem]]
-            [threeagent.threejs.util :refer [create-canvas]]
             [threeagent.core :as th]))
+
+(defonce canvas (atom nil))
+
+(use-fixtures :each (fixture/with-canvas canvas))
 
 (defrecord MySystem [sys-state]
   ISystem
@@ -39,11 +43,11 @@
   (let [state (th/atom {})
         sys-state (atom #{})
         my-system (->MySystem sys-state)]
-    (th/render (partial root state) (create-canvas "render-system-test-1")
+    (th/render (partial root state) @canvas
                {:systems {:custom-system my-system}})
     (is (= 2 (count @sys-state)))
  ;; Ensure consistency across re-render
-    (th/render (partial root state) (create-canvas "render-system-test-1")
+    (th/render (partial root state) @canvas
                {:systems {:custom-system my-system}})
     (is (= 2 (count @sys-state)))))
 
@@ -51,48 +55,48 @@
   (let [state (th/atom {})
         sys-state (atom #{})
         my-system (->MySystem sys-state)]
-    (th/render (partial root state) (create-canvas "render-system-test-2")
+    (th/render (partial root state) @canvas
                {:systems {:custom-system my-system}})
     (is (= 2 (count @sys-state)))
     (is (contains? @sys-state "b"))
     (is (contains? @sys-state "a"))
   ;; Ensure consistency across re-render
-    (th/render (partial root state) (create-canvas "render-system-test-2")
+    (th/render (partial root state) @canvas
                {:systems {:custom-system my-system}})
     (is (= 2 (count @sys-state)))))
 
 (deftest reactive-render-system-test
-  (async done
-         (let [state (th/atom {})
-               sys-state (atom #{})
-               my-system (->MySystem sys-state)]
-           (th/render (partial root state) (create-canvas "render-system-test-3")
-                      {:systems {:custom-system my-system}})
-           (is (= 2 (count @sys-state)))
-           (swap! state assoc :add-third? true)
-         ;; Wait for re-render
-           (js/setTimeout (fn []
-                            (is (= 3 (count @sys-state)))
-                            (is (contains? @sys-state "c"))
-                            (swap! state assoc :add-third? false)
-                            (js/setTimeout (fn []
-                                             (is (= 2 (count @sys-state)))
-                                             (is (not (contains? @sys-state "c")))
-                                             (done))
-                                           500))
-                          500))))
+  (let [state (th/atom {})
+        sys-state (atom #{})
+        my-system (->MySystem sys-state)]
+    (fixture/async-run! 
+                        [{:when (fn []
+                                  (th/render (partial root state) @canvas
+                                             {:systems {:custom-system my-system}}))
+                          :then (fn []
+                                  (is (= 2 (count @sys-state))))}
+                         {:when (fn []
+                                  (swap! state assoc :add-third? true))
+                          :then (fn []
+                                  (is (= 3 (count @sys-state)))
+                                  (is (contains? @sys-state "c")))}
+                         {:when (fn []
+                                  (swap! state assoc :add-third? false))
+                          :then (fn []
+                                  (is (= 2 (count @sys-state)))
+                                  (is (not (contains? @sys-state "c"))))}])))
 
 (deftest rerender-child-component-system-lifecycle-test
-  (async done
-         (let [state (th/atom true)
-               sys-state (atom #{})
-               my-system (->MySystem sys-state)]
-           (th/render (partial root2 state) (create-canvas "render-system-test-4")
-                      {:systems {:custom-system my-system}})
-           (is (= #{"a"} @sys-state))
-           (reset! state false)
-           ;; Wait for re-render
-           (js/setTimeout (fn []
-                            (is (= #{} @sys-state))
-                            (done))
-                          500))))
+  (let [state (th/atom true)
+        sys-state (atom #{})
+        my-system (->MySystem sys-state)]
+    (fixture/async-run! 
+                        [{:when (fn []
+                                  (th/render (partial root2 state) @canvas
+                                             {:systems {:custom-system my-system}}))
+                          :then (fn []
+                                  (is (= #{"a"} @sys-state)))}
+                         {:when (fn []
+                                  (reset! state false))
+                          :then (fn []
+                                  (is (= #{} @sys-state)))}])))

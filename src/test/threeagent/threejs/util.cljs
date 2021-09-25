@@ -9,6 +9,12 @@
       (.appendChild js/document.body c)
       (swap! canvases assoc key c)
       c)))
+
+(defn destroy-canvas! [key]
+  (when-let [c (get @canvases key)]
+    (.removeChild js/document.body c)
+    (swap! canvases dissoc key)))
+
 (defn get-in-scene [obj path]
   (if (seq path)
     (recur (aget (.-children obj) (first path))
