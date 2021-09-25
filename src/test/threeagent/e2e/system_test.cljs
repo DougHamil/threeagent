@@ -8,14 +8,18 @@
 
 (use-fixtures :each (fixture/with-canvas canvas))
 
-(defrecord MySystem [sys-state]
+(defrecord MySystem [log]
   ISystem
   (init [_ _ctx])
   (destroy [_ _ctx])
-  (on-entity-added [_ id _obj _config]
-    (swap! sys-state conj id))
-  (on-entity-removed [_ id _obj _config]
-    (swap! sys-state disj id))
+  (on-entity-added [_ ctx id _obj _config]
+    (swap! log conj {:event :added
+                     :entity-id id
+                     :context ctx}))
+  (on-entity-removed [_ ctx id _obj _config]
+    (swap! log conj {:event :removed
+                     :entity-id id
+                     :context ctx}))
   (tick [_ _]))
 
 (defn root [state]
@@ -38,64 +42,77 @@
   [:object
    [child @state]])
 
-(deftest persistent-custom-system-test
-  (let [state (th/atom {})
-        sys-state (atom #{})
-        my-system (->MySystem sys-state)]
-    (th/render (partial root state) @canvas
-               {:systems {:custom-system my-system}})
-    (is (= 2 (count @sys-state)))
- ;; Ensure consistency across re-render
-    (th/render (partial root state) @canvas
-               {:systems {:custom-system my-system}})
-    (is (= 2 (count @sys-state)))))
+(deftest rerender-calls-remove-hook-test
+  (let [log (atom #{})
+        root-fn (fn []
+                  [:object {:id "a"
+                            :system {}}
+                   [{:context :b}
+                    [:object {:id "b"
+                              :system {}}]]])
+        my-system (->MySystem log)]
+    (th/render root-fn @canvas
+               {:systems {:system my-system}})
+    (is (= #{{:event :added
+              :entity-id "a"
+              :context {}}
+             {:event :added
+              :entity-id "b"
+              :context {:context :b}}}
+           @log))
+    ;; Ensure consistency across re-render
+    (reset! log #{})
+    (th/render root-fn @canvas
+               {:systems {:system my-system}})
+    (is (= 4 (count @log)))))
 
-(deftest renewed-system-test
-  (let [state (th/atom {})
-        sys-state (atom #{})
-        my-system (->MySystem sys-state)]
-    (th/render (partial root state) @canvas
-               {:systems {:custom-system my-system}})
-    (is (= 2 (count @sys-state)))
-    (is (contains? @sys-state "b"))
-    (is (contains? @sys-state "a"))
-  ;; Ensure consistency across re-render
-    (th/render (partial root state) @canvas
-               {:systems {:custom-system my-system}})
-    (is (= 2 (count @sys-state)))))
 
 (deftest reactive-render-system-test
   (let [state (th/atom {})
-        sys-state (atom #{})
-        my-system (->MySystem sys-state)]
+        log (atom #{})
+        my-system (->MySystem log)]
     (fixture/async-run! 
-                        [{:when (fn []
-                                  (th/render (partial root state) @canvas
-                                             {:systems {:custom-system my-system}}))
-                          :then (fn []
-                                  (is (= 2 (count @sys-state))))}
-                         {:when (fn []
-                                  (swap! state assoc :add-third? true))
-                          :then (fn []
-                                  (is (= 3 (count @sys-state)))
-                                  (is (contains? @sys-state "c")))}
-                         {:when (fn []
-                                  (swap! state assoc :add-third? false))
-                          :then (fn []
-                                  (is (= 2 (count @sys-state)))
-                                  (is (not (contains? @sys-state "c"))))}])))
+     [{:when (fn []
+               (th/render (partial root state) @canvas
+                          {:systems {:custom-system my-system}}))
+       :then (fn []
+               (is (= 2 (count @log))))}
+      {:when (fn []
+               (swap! state assoc :add-third? true))
+       :then (fn []
+               (is (= 3 (count @log)))
+               (is (contains? (->> @log
+                                   (map :entity-id)
+                                   (set))
+                             "c")))}
+      {:when (fn []
+               (reset! log #{})
+               (swap! state assoc :add-third? false))
+       :then (fn []
+               (is (= 1 (count @log)))
+               (is (= #{{:event :removed
+                         :entity-id "c"
+                         :context {}}}
+                      @log)))}])))
 
 (deftest rerender-child-component-system-lifecycle-test
   (let [state (th/atom true)
-        sys-state (atom #{})
-        my-system (->MySystem sys-state)]
+        log (atom #{})
+        my-system (->MySystem log)]
     (fixture/async-run! 
-                        [{:when (fn []
-                                  (th/render (partial root2 state) @canvas
-                                             {:systems {:custom-system my-system}}))
-                          :then (fn []
-                                  (is (= #{"a"} @sys-state)))}
-                         {:when (fn []
-                                  (reset! state false))
-                          :then (fn []
-                                  (is (= #{} @sys-state)))}])))
+      [{:when (fn []
+                (th/render (partial root2 state) @canvas
+                           {:systems {:custom-system my-system}}))
+        :then (fn []
+                (is (= #{{:event :added
+                          :entity-id "a"
+                          :context {}}}
+                       @log)))}
+       {:when (fn []
+                (reset! log #{})
+                (reset! state false))
+        :then (fn []
+                (is (= #{{:event :removed
+                          :entity-id "a"
+                          :context {}}}
+                        @log)))}])))

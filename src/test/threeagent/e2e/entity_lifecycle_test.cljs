@@ -11,38 +11,43 @@
 
 (deftype MyEntityType [state]
   IEntityType
-  (create [_ {:keys [test-id]}]
+  (create [_ {:keys [id]} {:keys [test-id]}]
     (let [obj (three/Object3D.)]
       (set! (.-testId obj) test-id)
+      (set! (.-contextId obj) id)
       (swap! state assoc test-id obj)
       obj))
-  (destroy! [_this ^three/Object3D obj]
+  (destroy! [_ _ ^three/Object3D obj]
     (swap! state dissoc (.-testId obj))))
 
 (deftype MyUpdateableEntityType [state]
   IEntityType
-  (create [_ {:keys [test-id]}]
+  (create [_ _ {:keys [test-id]}]
     (let [obj (three/Object3D.)]
       (set! (.-testId obj) test-id)
       (reset! state obj)
       obj))
-  (destroy! [_ _]
+  (destroy! [_ _ _]
     (reset! state nil))
   IUpdateableEntityType
-  (update! [_ ^three/Object3D obj {:keys [test-id]}]
+  (update! [_ _ ^three/Object3D obj {:keys [test-id]}]
     (set! (.-testId obj) test-id)))
 
 (deftest entity-type-test
   (let [state (atom {})
         entity-types {:my-entity (MyEntityType. state)}
         root-fn (fn []
-                  [:my-entity {:test-id "a"}
-                   [:my-entity {:test-id "b"}]])]
+                  [{:id "context"}
+                   [:my-entity {:test-id "a"}
+                    [{:id "context2"}
+                     [:my-entity {:test-id "b"}]]]])]
     (th/render root-fn @canvas
                {:entity-types entity-types})
     (is (= #{"a" "b"} (set (keys @state))))
     (is (= "a" (.-testId ^js (get @state "a"))))
-    (is (= "b" (.-testId ^js (get @state "b"))))))
+    (is (= "context" (.-contextId ^js (get @state "a"))))
+    (is (= "b" (.-testId ^js (get @state "b"))))
+    (is (= "context2" (.-contextId ^js (get @state "b"))))))
                   
 (deftest create-and-destroy-entity-type-test
   (let [state (atom {})

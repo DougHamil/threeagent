@@ -41,7 +41,6 @@
       (vscene/render! scene changelog)
       (is (= {:test "test"} (get-ctx "b"))))))
 
-
 (deftest context-forces-replacement-test
   (let [state (th/atom :a)
         child-2-fn (fn []

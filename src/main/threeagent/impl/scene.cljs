@@ -25,7 +25,7 @@
     (callback old-obj))
   (when-let [on-removed (:on-removed old-component-config)]
     (on-removed old-obj))
-  (let [callbacks (systems/dispatch-on-removed ctx (.-id node) old-obj old-component-config)]
+  (let [callbacks (systems/dispatch-on-removed ctx (.-context node) (.-id node) old-obj old-component-config)]
     (when (.-isCamera old-obj)
       (when (.-active old-obj)
         (set! (.-camera ctx) (.-lastCamera ctx)))
@@ -41,7 +41,7 @@
     (on-added obj))
   (when-let [ref (:ref component-config)]
     (ref obj))
-  (let [callbacks (systems/dispatch-on-added ctx (.-id node) obj component-config)]
+  (let [callbacks (systems/dispatch-on-added ctx (.-context node) (.-id node) obj component-config)]
     (when (.-isCamera obj)
       (when (.-active obj)
         (set! (.-lastCamera ctx) (.-camera ctx))
@@ -56,7 +56,7 @@
                 rotation
                 scale]} (.-data node)
         entity-type (get (.-entityTypes ctx) component-key)
-        obj (entity/create entity-type component-config)]
+        obj (entity/create entity-type (.-context node) component-config)]
     (threejs/set-position! obj position)
     (threejs/set-rotation! obj rotation)
     (threejs/set-scale! obj scale)
@@ -86,7 +86,7 @@
         (cb))
       (when-let [parent (.-parent obj)]
         (.remove parent obj)))
-    (entity/destroy! entity-type obj)))
+    (entity/destroy! entity-type (.-context node) obj)))
 
 (defn- update-entity
   [^Context ctx ^vscene/Node node old-data new-data]
@@ -99,7 +99,7 @@
         obj  ^three/Object3D (.-threejs node)]
     (doseq [cb (on-entity-removed ctx node obj (:component-config old-data))]
       (cb))
-    (entity/update! entity-type obj component-config)
+    (entity/update! entity-type (.-context node) obj component-config)
     (threejs/set-position! obj position)
     (threejs/set-rotation! obj rotation)
     (threejs/set-scale! obj scale)

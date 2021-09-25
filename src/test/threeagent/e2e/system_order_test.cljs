@@ -12,10 +12,10 @@
   ISystem
   (init [_ _ctx])
   (destroy [_ _ctx])
-  (on-entity-added [_ id _obj _config]
+  (on-entity-added [_ _ id _obj _config]
     (swap! log conj [:add id])
     #(swap! log conj [:post-add id]))
-  (on-entity-removed [_ id _obj _config]
+  (on-entity-removed [_ _ id _obj _config]
     (swap! log conj [:remove id])
     #(swap! log conj [:post-remove id]))
   (tick [_ _]))
