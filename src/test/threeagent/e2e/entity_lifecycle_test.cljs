@@ -2,7 +2,7 @@
   (:require [cljs.test :refer-macros [deftest is use-fixtures]]
             ["three" :as three]
             [threeagent.e2e.fixture :as fixture]
-            [threeagent.entity :refer [IEntityType]]
+            [threeagent.entity :refer [IEntityType IUpdateableEntityType]]
             [threeagent.core :as th]))
 
 (defonce canvas (atom nil))
@@ -18,6 +18,19 @@
       obj))
   (destroy! [_this ^three/Object3D obj]
     (swap! state dissoc (.-testId obj))))
+
+(deftype MyUpdateableEntityType [state]
+  IEntityType
+  (create [_ {:keys [test-id]}]
+    (let [obj (three/Object3D.)]
+      (set! (.-testId obj) test-id)
+      (reset! state obj)
+      obj))
+  (destroy! [_ _]
+    (reset! state nil))
+  IUpdateableEntityType
+  (update! [_ ^three/Object3D obj {:keys [test-id]}]
+    (set! (.-testId obj) test-id)))
 
 (deftest entity-type-test
   (let [state (atom {})
@@ -67,3 +80,24 @@
                                   (th/render root-fn-2 @canvas {:entity-types entity-types}))
                           :then (fn []
                                   (is (= #{"b"} (set (keys @state)))))}])))
+
+(deftest updateable-entity-test
+  (let [state (atom nil)
+        scene-state (th/atom "a")
+        the-object (atom nil)
+        entity-types {:my-entity (MyUpdateableEntityType. state)}
+        root-fn (fn []
+                  [:my-entity {:test-id @scene-state}])]
+    (fixture/async-run! [{:when (fn []
+                                  (th/render root-fn @canvas {:entity-types entity-types}))
+                          :then (fn []
+                                  (let [object ^js @state]
+                                    (is (= "a" (.-testId object)))
+                                    (reset! the-object object)))}
+                         {:when (fn []
+                                  (reset! scene-state "b"))
+                          :then (fn []
+                                  (let [object ^js @state]
+                                    (is (= "b" (.-testId object)))
+                                    ;; Ensure the object was not recreated
+                                    (is (= @the-object object))))}])))
