@@ -9,6 +9,17 @@
 
 (use-fixtures :each (fixture/with-canvas canvas))
 
+(deftype LoggingEntityType [log]
+  IEntityType
+  (create [_ _ {:keys [test-id]}]
+    (let [obj (three/Object3D.)]
+      (swap! log conj {:event :created
+                       :id test-id})
+      obj))
+  (destroy! [_ _ _ {:keys [test-id]}]
+    (swap! log conj {:event :destroyed
+                     :id test-id})))
+
 (deftype MyEntityType [state]
   IEntityType
   (create [_ {:keys [id]} {:keys [test-id]}]
@@ -17,7 +28,7 @@
       (set! (.-contextId obj) id)
       (swap! state assoc test-id obj)
       obj))
-  (destroy! [_ _ ^three/Object3D obj]
+  (destroy! [_ _ ^three/Object3D obj _]
     (swap! state dissoc (.-testId obj))))
 
 (deftype MyUpdateableEntityType [state]
@@ -27,7 +38,7 @@
       (set! (.-testId obj) test-id)
       (reset! state obj)
       obj))
-  (destroy! [_ _ _]
+  (destroy! [_ _ _ _]
     (reset! state nil))
   IUpdateableEntityType
   (update! [_ _ ^three/Object3D obj {:keys [test-id]}]
@@ -48,7 +59,34 @@
     (is (= "context" (.-contextId ^js (get @state "a"))))
     (is (= "b" (.-testId ^js (get @state "b"))))
     (is (= "context2" (.-contextId ^js (get @state "b"))))))
-                  
+
+(deftest swap-entity-type-test
+  (let [log (atom [])
+        entity-types {:my-entity (LoggingEntityType. log)}
+        state (th/atom true)
+        root-fn (fn []
+                  [:object
+                   (if @state
+                     [:my-entity {:test-id "a"}]
+                     [:my-entity {:test-id "b"}])])]
+    (fixture/async-run!
+     [{:when (fn []
+               (th/render root-fn @canvas {:entity-types entity-types}))
+       :then (fn []
+               (is (= [{:event :created
+                        :id "a"}]
+                      @log)))}
+      {:when (fn []
+               (reset! log [])
+               (reset! state false))
+       :then (fn []
+               (is (= [{:event :destroyed
+                        :id "a"}
+                       {:event :created
+                        :id "b"}]
+                      @log)))}])))
+               
+
 (deftest create-and-destroy-entity-type-test
   (let [state (atom {})
         root-state (th/atom false)

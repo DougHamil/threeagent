@@ -86,7 +86,7 @@
         (cb))
       (when-let [parent (.-parent obj)]
         (.remove parent obj)))
-    (entity/destroy! entity-type (.-context node) obj)))
+    (entity/destroy! entity-type (.-context node) obj component-config)))
 
 (defn- update-entity
   [^Context ctx ^vscene/Node node old-data new-data]
@@ -121,17 +121,21 @@
   "Destroy and recreate an entity at a give node in the scene-graph"
   [^Context ctx ^vscene/Node node old-data new-data]
   (let [old-obj (.-threejs node)
+        {old-component-key :component-key
+         old-component-config :component-config} old-data
+        old-entity-type (get (.-entityTypes ctx) old-component-key)
         parent-obj (.-parent old-obj)
-        children (.-children old-obj)
-        new-obj (create-entity-object ctx node)]
-    (on-entity-removed ctx node old-obj (:component-config old-data))
-    (set! (.-threejs node) new-obj)
-    (.remove parent-obj old-obj)
-    (.add parent-obj new-obj)
-    (when-not (.terminal? node)
-      (doseq [child (aclone children)]
-        (.add new-obj child)))
-    (on-entity-added ctx node new-obj (:component-config new-data))))
+        children (.-children old-obj)]
+    (on-entity-removed ctx node old-obj old-component-config)
+    (entity/destroy! old-entity-type (.-context node) old-obj old-component-config)
+    (let [new-obj (create-entity-object ctx node)]
+      (set! (.-threejs node) new-obj)
+      (.remove parent-obj old-obj)
+      (.add parent-obj new-obj)
+      (when-not (.terminal? node)
+        (doseq [child (aclone children)]
+          (.add new-obj child)))
+      (on-entity-added ctx node new-obj (:component-config new-data)))))
 
 (defn- init-scene! [^Context context virtual-scene scene-root]
   (create-entity context scene-root (.-root virtual-scene)))

@@ -25,7 +25,7 @@
       (set! (.-castShadow mesh) (:cast-shadow config))
       (set! (.-receiveShadow mesh) (:receive-shadow config))
       mesh))
-  (destroy! [_ _ _])
+  (destroy! [_ _ _ _])
   IUpdateableEntityType
   (update! [_ _ ^three/Mesh mesh config]
     (let [geo (geo-fn config)
@@ -74,7 +74,7 @@
       (set! (.-castShadow light) (:cast-shadow cfg))
       (set! (.-receiveShadow light) (:receive-shadow cfg))
       (apply-shadow-settings! light (:shadow cfg))))
-  (destroy! [_ _ _])
+  (destroy! [_ _ _ _])
   IUpdateableEntityType
   (update! [_ _ ^three/Light obj cfg]
     (update-fn obj cfg)
@@ -91,18 +91,18 @@
   {;; Common
    :object (reify IEntityType
              (create [_ _ _] (three/Object3D.))
-             (destroy! [_ _ _])
+             (destroy! [_ _ _ _])
              IUpdateableEntityType
              (update! [_ _ obj _] obj))
    :group (reify IEntityType
             (create [_ _ _] (three/Group.))
-            (destroy! [_ _ _])
+            (destroy! [_ _ _ _])
             IUpdateableEntityType
             (update! [_ _ obj _] obj))
    :instance (reify IEntityType
                (create [_ _ {:keys [object]}]
                  object)
-               (destroy! [_ _ _]))
+               (destroy! [_ _ _ _]))
 
    ;; Cameras
    :perspective-camera (reify IEntityType
@@ -112,7 +112,7 @@
                              (apply-props-clj! cam cfg)
                              (.updateProjectionMatrix cam)
                              cam))
-                         (destroy! [_ _ _])
+                         (destroy! [_ _ _ _])
                          IUpdateableEntityType
                          (update! [_ _ ^three/PerspectiveCamera o cfg]
                            (apply-props-clj! o cfg)
@@ -125,7 +125,7 @@
                               (apply-props-clj! cam cfg)
                               (.updateProjectionMatrix cam)
                               cam))
-                          (destroy! [_ _ _])
+                          (destroy! [_ _ _ _])
                           IUpdateableEntityType
                           (update! [_ _ ^three/OrthographicCamera o cfg]
                             (apply-props-clj! o cfg)

@@ -5,7 +5,7 @@
   (create [this context entity-config]
     "Returns a new instance of this entity type, based on the provided `entity-config` and `context`.
      The returned instance should be a ThreeJS `Object3D` or one of its sub-classes.")
-  (destroy! [this context ^three/Object3D object]
+  (destroy! [this context ^three/Object3D object entity-config]
     "Destroys an existing instance of this entity type."))
 
 (defprotocol IUpdateableEntityType
