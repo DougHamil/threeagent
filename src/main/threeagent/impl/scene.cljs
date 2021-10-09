@@ -94,15 +94,10 @@
          (cb)))
      obj)))
 
-(declare destroy-entity)
-
-(defn- destroy-portal-entity [^Context ctx ^scene/Node node]
-  (.for-each-child node (partial destroy-entity ctx)))
-
 (defn- destroy-entity
   ([^Context ctx ^vscene/Node node]
    (if (portal? node)
-     (destroy-portal-entity ctx node)
+     (.for-each-child node (partial destroy-entity ctx))
      (let [{:keys [component-key
                    component-config]} (.-data node)
            entity-type (get (.-entityTypes ctx) component-key)
