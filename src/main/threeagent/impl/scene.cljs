@@ -67,15 +67,14 @@
       (throw (js/Error. (str "Cannot find entity-type for keyword '" (str component-key) "'")
                         node)))))
 
-(defn- resolve-parent [^three/Object3D default-parent ^vscene/Node node]
-  (if-let [path (.-portalPath node)]
-    (let [parent (threejs/get-in default-parent path)]
-      (when-not parent
-        (js/console.error (str "Invalid path '" path "'")
-                          default-parent)
-        (throw (js/Error. (str "Portal path '" (str path) "' is invalid."))))
-      parent)
-    default-parent))
+(defn- resolve-portal-object [^three/Object3D default-parent ^vscene/Node node]
+  (let [path (.-portalPath node)
+        parent (threejs/get-in default-parent path)]
+    (when-not parent
+      (js/console.error (str "Invalid portal path '" path "'")
+                        default-parent)
+      (throw (js/Error. (str "Portal path '" path "' is invalid."))))
+    parent))
 
 (defn- create-entity
   ([^Context ctx ^three/Object3D parent-object ^vscene/Node node]
@@ -83,7 +82,7 @@
   ([^Context ctx ^three/Object3D parent ^vscene/Node node portal?]
    (let [{:keys [component-config]} (.-data node)
          obj (if portal?
-               (resolve-parent parent node)
+               (resolve-portal-object parent node)
                (create-entity-object ctx node))]
      (when-not portal?
        (.add parent obj))
