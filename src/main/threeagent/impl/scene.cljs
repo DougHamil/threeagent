@@ -67,14 +67,6 @@
       (throw (js/Error. (str "Cannot find entity-type for keyword '" (str component-key) "'")
                         node)))))
 
-(defn- create-portal-object [^Context _ctx ^vscene/Node node]
-  (let [id (.-id node)
-        obj (three/Object3D.)]
-    (if id
-      (set! (.-name obj) id)
-      (set! (.-name obj) "THREEAGENT_PORTAL"))
-    obj))
-  
 (defn- resolve-parent [^three/Object3D default-parent ^vscene/Node node]
   (if-let [path (.-portalPath node)]
     (let [parent (threejs/get-in default-parent path)]
@@ -88,13 +80,13 @@
 (defn- create-entity
   ([^Context ctx ^three/Object3D parent-object ^vscene/Node node]
    (create-entity ctx parent-object node (portal? node)))
-  ([^Context ctx ^three/Object3D parent-object ^vscene/Node node portal?]
+  ([^Context ctx ^three/Object3D parent ^vscene/Node node portal?]
    (let [{:keys [component-config]} (.-data node)
-         parent (resolve-parent parent-object node)
          obj (if portal?
-               (create-portal-object ctx node)
+               (resolve-parent parent node)
                (create-entity-object ctx node))]
-     (.add parent obj)
+     (when-not portal?
+       (.add parent obj))
      (set! (.-threejs node) obj)
      (let [post-added-fns (on-entity-added ctx node obj component-config)]
        (.for-each-child node (partial create-entity ctx obj))
@@ -106,9 +98,7 @@
 
 (defn- destroy-portal-entity [^Context ctx ^scene/Node node]
   (let [obj ^three/Object3D (.-threejs node)]
-    (.for-each-child node (partial destroy-entity ctx))
-    (when-let [parent (.-parent obj)]
-      (.remove parent obj))))
+    (.for-each-child node (partial destroy-entity ctx))))
 
 (defn- destroy-entity
   ([^Context ctx ^vscene/Node node]

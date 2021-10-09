@@ -41,9 +41,8 @@
      [{:when (fn []
                (th/render root-fn @canvas))
        :then (fn []
-               (let [portal (.getObjectByName parent "THREEAGENT_PORTAL")]
-                 (is (some? portal))
-                 (is (= 2 (count (.-children portal))))))}])))
+               (js/console.log nested-obj)
+               (is (= 3 (count (.-children parent)))))}])))
 
 (deftest reactive-portal-test
   (let [state (th/atom true)
@@ -60,15 +59,11 @@
      [{:when (fn []
                (th/render root-fn @canvas))
        :then (fn []
-               (let [portal (.getObjectByName parent "THREEAGENT_PORTAL")]
-                 (is (some? portal))
-                 (is (= 2 (count (.-children portal))))))}
+               (is (= 3 (count (.-children parent)))))}
       {:when (fn []
                (reset! state false))
        :then (fn []
-               (let [portal (.getObjectByName parent "THREEAGENT_PORTAL")]
-                 (is (some? portal))
-                 (is (= 1 (count (.-children portal))))))}])))
+               (is (= 2 (count (.-children parent)))))}])))
 
 (deftest reactive-portal-drop-test
   (let [state (th/atom true)
@@ -85,25 +80,22 @@
      [{:when (fn []
                (th/render root-fn @canvas))
        :then (fn []
-               (let [portal (.getObjectByName parent "THREEAGENT_PORTAL")]
-                 (is (some? portal))
-                 (is (= 2 (count (.-children portal))))))}
+               (is (= 3 (count (.-children parent)))))}
       {:when (fn []
                (reset! state false))
        :then (fn []
-               (let [portal (.getObjectByName parent "THREEAGENT_PORTAL")]
-                 (is (nil? portal))))}
+               (is (= 1 (count (.-children parent)))))}
       {:when (fn []
                (reset! state true))
        :then (fn []
-               (let [portal (.getObjectByName parent "THREEAGENT_PORTAL")]
-                 (is (some? portal))
-                 (is (= 2 (count (.-children portal))))))}])))
+               (is (= 3 (count (.-children parent)))))}])))
 
 (deftest reactive-portal-add-child-test
   (let [state (th/atom 0)
         nested-obj (create-3js-obj ["Spine" "Neck" "Head"])
         parent (get-in-object nested-obj ["Spine" "Neck"])
+        get-parent (fn []
+                     (aget (.-children parent) 1))
         root-fn (fn []
                   [:object
                    [:instance {:object nested-obj}
@@ -114,18 +106,14 @@
      [{:when (fn []
                (th/render root-fn @canvas))
        :then (fn []
-               (let [portal (.getObjectByName parent "THREEAGENT_PORTAL")]
-                 (is (some? portal))
-                 (is (= 0 (count (.-children portal))))))}
+                (is (= 1 (count (.-children parent)))))}
       {:when (fn []
                (reset! state 2))
        :then (fn []
-               (let [parent (aget (.-children (.getObjectByName parent "THREEAGENT_PORTAL"))
-                                  0)]
-                 (is (= @state (count (.-children parent))))))}
+               (is (= @state
+                      (count (.-children (get-parent))))))}
       {:when (fn []
                (reset! state 1))
        :then (fn []
-               (let [parent (aget (.-children (.getObjectByName parent "THREEAGENT_PORTAL"))
-                                  0)]
-                 (is (= @state (count (.-children parent))))))}])))
+               (is (= @state
+                      (count (.-children (get-parent))))))}])))
