@@ -19,6 +19,9 @@
   (let [entity-type (get (.-entityTypes ctx) (:component-key (.-data node)))]
     (satisfies? entity/IUpdateableEntityType entity-type)))
 
+(defn- portal? [^vscene/Node node]
+  (some? (.-portalPath node)))
+
 (defn- on-entity-removed [^Context ctx ^vscene/Node node ^three/Object3D old-obj old-component-config]
   ;; Lifecycle Hooks
   (when-let [callback (:on-removed (.-meta node))]
@@ -54,39 +57,74 @@
                 component-key
                 position
                 rotation
-                scale]} (.-data node)
-        entity-type (get (.-entityTypes ctx) component-key)
-        obj (entity/create entity-type (.-context node) component-config)]
-    (threejs/set-position! obj position)
-    (threejs/set-rotation! obj rotation)
-    (threejs/set-scale! obj scale)
+                scale]} (.-data node)]
+    (if-let [entity-type (get (.-entityTypes ctx) component-key)]
+      (let [obj (entity/create entity-type (.-context node) component-config)]
+        (threejs/set-position! obj position)
+        (threejs/set-rotation! obj rotation)
+        (threejs/set-scale! obj scale)
+        obj)
+      (throw (js/Error. (str "Cannot find entity-type for keyword '" (str component-key) "'")
+                        node)))))
+
+(defn- create-portal-object [^Context _ctx ^vscene/Node node]
+  (let [id (.-id node)
+        obj (three/Object3D.)]
+    (if id
+      (set! (.-name obj) id)
+      (set! (.-name obj) "THREEAGENT_PORTAL"))
     obj))
   
+(defn- resolve-parent [^three/Object3D default-parent ^vscene/Node node]
+  (if-let [path (.-portalPath node)]
+    (let [parent (threejs/get-in default-parent path)]
+      (when-not parent
+        (js/console.error (str "Invalid path '" path "'")
+                          default-parent)
+        (throw (js/Error. (str "Portal path '" (str path) "' is invalid."))))
+      parent)
+    default-parent))
+
 (defn- create-entity
-  [^Context ctx ^three/Object3D parent-object ^vscene/Node node]
-  (let [{:keys [component-config]} (.-data node)
-        obj (create-entity-object ctx node)]
-    (.add parent-object obj)
-    (set! (.-threejs node) obj)
-    (let [post-added-fns (on-entity-added ctx node obj component-config)]
-      (.for-each-child node (partial create-entity ctx obj))
-      (doseq [cb post-added-fns]
-        (cb)))
-    obj))
+  ([^Context ctx ^three/Object3D parent-object ^vscene/Node node]
+   (create-entity ctx parent-object node (portal? node)))
+  ([^Context ctx ^three/Object3D parent-object ^vscene/Node node portal?]
+   (let [{:keys [component-config]} (.-data node)
+         parent (resolve-parent parent-object node)
+         obj (if portal?
+               (create-portal-object ctx node)
+               (create-entity-object ctx node))]
+     (.add parent obj)
+     (set! (.-threejs node) obj)
+     (let [post-added-fns (on-entity-added ctx node obj component-config)]
+       (.for-each-child node (partial create-entity ctx obj))
+       (doseq [cb post-added-fns]
+         (cb)))
+     obj)))
+
+(declare destroy-entity)
+
+(defn- destroy-portal-entity [^Context ctx ^scene/Node node]
+  (let [obj ^three/Object3D (.-threejs node)]
+    (.for-each-child node (partial destroy-entity ctx))
+    (when-let [parent (.-parent obj)]
+      (.remove parent obj))))
 
 (defn- destroy-entity
-  [^Context ctx ^vscene/Node node]
-  (let [{:keys [component-key
-                component-config]} (.-data node)
-        entity-type (get (.-entityTypes ctx) component-key)
-        obj  ^three/Object3D (.-threejs node)]
-    (let [post-removed-fns (on-entity-removed ctx node obj component-config)]
-      (.for-each-child node (partial destroy-entity ctx))
-      (doseq [cb post-removed-fns]
-        (cb))
-      (when-let [parent (.-parent obj)]
-        (.remove parent obj)))
-    (entity/destroy! entity-type (.-context node) obj component-config)))
+  ([^Context ctx ^vscene/Node node]
+   (if (portal? node)
+     (destroy-portal-entity ctx node)
+     (let [{:keys [component-key
+                   component-config]} (.-data node)
+           entity-type (get (.-entityTypes ctx) component-key)
+           obj  ^three/Object3D (.-threejs node)]
+       (let [post-removed-fns (on-entity-removed ctx node obj component-config)]
+         (.for-each-child node (partial destroy-entity ctx))
+         (doseq [cb post-removed-fns]
+           (cb))
+         (when-let [parent (.-parent obj)]
+           (.remove parent obj)))
+       (entity/destroy! entity-type (.-context node) obj component-config)))))
 
 (defn- update-entity
   [^Context ctx ^vscene/Node node old-data new-data]
@@ -118,7 +156,7 @@
     (threejs/set-scale! obj scale)))
 
 (defn- replace-entity
-  "Destroy and recreate an entity at a give node in the scene-graph"
+  "Destroy and recreate an entity at a given node in the scene-graph"
   [^Context ctx ^vscene/Node node old-data new-data]
   (let [old-obj (.-threejs node)
         {old-component-key :component-key
@@ -161,7 +199,7 @@
     :remove
     (destroy-entity context node)
 
-    :update 
+    :update
     (case (update-type context node old-data new-data)
       :replace-entity (try
                         (replace-entity context node old-data new-data)
@@ -172,12 +210,12 @@
                        (update-entity context node old-data new-data)
                        (catch :default ex
                          (js/console.error "Failed to update entity" ex
-                                            (clj->js (.-data node)))))
+                                           (clj->js (.-data node)))))
       :transform-entity (try
                           (transform-entity context node)
                           (catch :default ex
                             (js/console.error "Failed to transform entity" ex
-                                            (clj->js (.-data node))))))))
+                                              (clj->js (.-data node))))))))
 
 (defn- animate [^Context context]
   (let [stats (.-stats context)

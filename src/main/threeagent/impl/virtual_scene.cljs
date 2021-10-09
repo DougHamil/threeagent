@@ -35,7 +35,7 @@
 (deftype RenderQueueEntry [^Node node ^js renderFn ^js forceReplace]
   Object)
 
-(deftype Node [context ^Node parent depth id key meta data dirty render reaction children]
+(deftype Node [context ^Node parent depth id key meta data dirty render reaction children portalPath]
   Object
   (terminal? [_this]
     (= 0 (.-size children)))
@@ -77,6 +77,7 @@
 
 (defmulti ->node (fn [^Scene _scene _context ^Node _parent _key [l & r]]
                    (cond
+                     (= :> l) :portal
                      (keyword? l) :keyword
                      (fn? l) :fn
                      (map? l) :context
@@ -85,9 +86,24 @@
                      :else nil)))
 
 (defmethod ->node :default [_scene _context _parent _key form]
-  (println "Invalid object form:" form))
+  (js/console.error "Invalid object form:" (str form)))
 
 (defmethod ->node :empty-list [_scene _context _parent _key _form])
+
+(defmethod ->node :portal [scene context parent key [_ path & children :as form]]
+  (let [depth (if parent
+                (inc (.-depth parent))
+                0)
+        children (filter some? children)
+        children-map (js/Map.)
+        node (Node. context parent depth nil key (meta form) nil false nil nil children-map path)]
+    (when (not (or (string? key)
+                   (number? key)))
+      (throw (str "^:key must be a string or number, found: " key)))
+    (doseq [[idx child] (medley/indexed children)]
+      (when-let [child-node (->node scene context node idx child)]
+        (.set children-map (.-key child-node) child-node)))
+    node))
 
 (defmethod ->node :context [scene context parent key [subcontext & rest]]
   (->node scene (merge context subcontext) parent key rest))
@@ -107,7 +123,7 @@
         depth (if parent
                 (inc (.-depth parent))
                 0)
-        node (Node. context parent depth (:id comp-config) key metadata data false nil nil children-map)]
+        node (Node. context parent depth (:id comp-config) key metadata data false nil nil children-map nil)]
     (when (not (or (string? key)
                    (number? key)))
       (throw (str "^:key must be a string or number, found: " key)))
@@ -165,6 +181,7 @@
 (defmulti ->node-shallow (fn [_key _context [l & r]]
                            (cond
                              (fn? l) :fn
+                             (= :> l) :portal
                              (keyword? l) :keyword
                              (map? l) :context
                              (sequential? l) :seq
@@ -188,11 +205,25 @@
     (let [m (meta form)]
       (->node-shallow (get-key key m) context (with-meta (into [:object] form) m)))))
 
+(defn- valid-child? [child]
+  (and (some? child) (seq child)))
+
+(defmethod ->node-shallow :portal [key context [_ path & children :as form]]
+  (let [children (filter valid-child? children)]
+   {:key key
+    :context context
+    :data {}
+    :portal-path path
+    :form form
+    :children-keys (map-indexed #(vector (or (:key (meta %2)) %1) %2)
+                                children)}))
+  
+
 (defmethod ->node-shallow :keyword [key context form]
   (let [[comp-key & rs] form
         first-child (first rs)
         comp-config (if (map? first-child) first-child {})
-        children (filter #(and (some? %) (seq %))
+        children (filter valid-child?
                          (if (map? first-child) (rest rs) rs))]
     {:key key
      :context context
@@ -242,7 +273,7 @@
   (if (diff-fn? node new-form)
     ;; Completely different render function, replace
     (replace-node! scene node new-form changelog)
-    ;; Same form, re-render using the default render-fn
+    ;; Same form, re-render using the saved render-fn
     (let [render-fn (.-defaultRenderFn node)]
       (update-node! scene node new-form render-fn changelog false))))
 
@@ -254,10 +285,11 @@
           parent (.-parent node)
           old-data (.-data node)
           old-context (.-context node)
+          old-portal-path (.-portalPath node)
           parent-context (if parent
                            (.-context parent)
                            {})
-                                      
+
           current-keys (set (es6-iterator-seq (.keys children)))
           rendered-form (if render-fn
                           (apply render-fn (rest new-form))
@@ -265,13 +297,18 @@
           shallow-node (->node-shallow key parent-context rendered-form)
           {new-data :data
            children-keys :children-keys
+           new-portal-path :portal-path
            new-context :context} shallow-node
           new-keys (set (map first children-keys))
           dropped-keys (set/difference current-keys new-keys)]
-      (if (not= new-context old-context)
-        ;; Force replacement of node if the context changed
+      (cond
+        (not= new-context old-context)
         (replace-node! scene node new-form changelog)
-        ;; Otherwise, update in-place
+
+        (not= new-portal-path old-portal-path)
+        (replace-node! scene node new-form changelog)
+
+        :else
         (do
           (set! (.-data node) new-data)
           (set! (.-meta node) (meta new-form))

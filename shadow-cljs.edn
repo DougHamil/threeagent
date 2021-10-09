@@ -14,4 +14,3 @@
                      :modules {:main {:init-fn shadows.app/init}}
                      :output-dir "examples/public/js"
                      :devtools {:http-root "examples/public" :http-port 8080}}}}
- 
