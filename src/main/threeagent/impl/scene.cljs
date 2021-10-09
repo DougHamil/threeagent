@@ -97,8 +97,7 @@
 (declare destroy-entity)
 
 (defn- destroy-portal-entity [^Context ctx ^scene/Node node]
-  (let [obj ^three/Object3D (.-threejs node)]
-    (.for-each-child node (partial destroy-entity ctx))))
+  (.for-each-child node (partial destroy-entity ctx)))
 
 (defn- destroy-entity
   ([^Context ctx ^vscene/Node node]
