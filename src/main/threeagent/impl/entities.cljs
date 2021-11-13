@@ -18,16 +18,16 @@
 
 (deftype MeshEntity [geo-fn]
   IEntityType
-  (create [_ config]
+  (create [_ _ config]
     (let [geo (geo-fn config)
           mat (->material (:material config))
           mesh (three/Mesh. geo mat)]
       (set! (.-castShadow mesh) (:cast-shadow config))
       (set! (.-receiveShadow mesh) (:receive-shadow config))
       mesh))
-  (destroy! [_ _])
+  (destroy! [_ _ _ _])
   IUpdateableEntityType
-  (update! [_ ^three/Mesh mesh config]
+  (update! [_ _ ^three/Mesh mesh config]
     (let [geo (geo-fn config)
           mat (->material (:material config))]
       (set! (.-geometry mesh) geo)
@@ -69,14 +69,14 @@
 
 (deftype LightEntity [create-fn update-fn]
   IEntityType
-  (create [_ cfg]
+  (create [_ _ cfg]
     (let [light (create-fn cfg)]
       (set! (.-castShadow light) (:cast-shadow cfg))
       (set! (.-receiveShadow light) (:receive-shadow cfg))
       (apply-shadow-settings! light (:shadow cfg))))
-  (destroy! [_ _])
+  (destroy! [_ _ _ _])
   IUpdateableEntityType
-  (update! [_ ^three/Light obj cfg]
+  (update! [_ _ ^three/Light obj cfg]
     (update-fn obj cfg)
     (set! (.-castShadow obj) (:cast-shadow cfg))
     (set! (.-receiveShadow obj) (:receive-shadow cfg))
@@ -90,44 +90,44 @@
 (def builtin-entity-types
   {;; Common
    :object (reify IEntityType
-             (create [_ _] (three/Object3D.))
-             (destroy! [_ _])
+             (create [_ _ _] (three/Object3D.))
+             (destroy! [_ _ _ _])
              IUpdateableEntityType
-             (update! [_ obj _] obj))
+             (update! [_ _ obj _] obj))
    :group (reify IEntityType
-            (create [_ _] (three/Group.))
-            (destroy! [_ _])
+            (create [_ _ _] (three/Group.))
+            (destroy! [_ _ _ _])
             IUpdateableEntityType
-            (update! [_ obj _] obj))
+            (update! [_ _ obj _] obj))
    :instance (reify IEntityType
-               (create [_ {:keys [object]}]
+               (create [_ _ {:keys [object]}]
                  object)
-               (destroy! [_ _]))
+               (destroy! [_ _ _ _]))
 
    ;; Cameras
    :perspective-camera (reify IEntityType
-                         (create [_ cfg]
+                         (create [_ _ cfg]
                            (let [cam (three/PerspectiveCamera. 75.0 1.0 0.1 2000.0)]
                              (set! (.-active cam) true)
                              (apply-props-clj! cam cfg)
                              (.updateProjectionMatrix cam)
                              cam))
-                         (destroy! [_ _])
+                         (destroy! [_ _ _ _])
                          IUpdateableEntityType
-                         (update! [_ ^three/PerspectiveCamera o cfg]
+                         (update! [_ _ ^three/PerspectiveCamera o cfg]
                            (apply-props-clj! o cfg)
                            (.updateProjectionMatrix o)
                            o))
    :orthographic-camera (reify IEntityType
-                          (create [_ cfg]
+                          (create [_ _ cfg]
                             (let [cam (three/OrthographicCamera. -1 1 1 -1 0.1 2000.0)]
                               (set! (.-active cam) true)
                               (apply-props-clj! cam cfg)
                               (.updateProjectionMatrix cam)
                               cam))
-                          (destroy! [_ _])
+                          (destroy! [_ _ _ _])
                           IUpdateableEntityType
-                          (update! [_ ^three/OrthographicCamera o cfg]
+                          (update! [_ _ ^three/OrthographicCamera o cfg]
                             (apply-props-clj! o cfg)
                             (.updateProjectionMatrix o)
                             o))

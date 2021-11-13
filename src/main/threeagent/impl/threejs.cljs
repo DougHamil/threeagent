@@ -1,4 +1,5 @@
 (ns threeagent.impl.threejs
+  (:refer-clojure :exclude [get-in])
   (:require ["three" :as three]))
 
 
@@ -36,3 +37,13 @@
   (for [c (.-children parent)]
     (remove-child! parent c))
   parent)
+
+(defn get-in [^three/Object3D parent path]
+  (if (seq path)
+    (let [next (first path)]
+      (if (string? next)
+        (recur (.getObjectByName parent next) (rest path))
+        (if (= :.. next)
+          (recur (.-parent parent) (rest path))
+          (recur (aget (.-children parent) next) (rest path)))))
+    parent))

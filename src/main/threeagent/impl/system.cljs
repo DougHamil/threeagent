@@ -2,22 +2,22 @@
   (:require [threeagent.impl.types :refer [Context]]
             [threeagent.system :as system-protocol]))
 
-(defn dispatch-on-added [^Context context key ^js obj node-config]
+(defn dispatch-on-added [^Context context entity-context entity-id ^js entity-obj entity-config]
   (let [systems (.-systems context)
         callbacks (array)]
-    (doseq [[k v] node-config]
+    (doseq [[k v] entity-config]
       (when-let [sys (get systems k)]
-        (let [cb (system-protocol/on-entity-added sys key obj v)]
+        (let [cb (system-protocol/on-entity-added sys entity-context entity-id entity-obj v)]
           (when (fn? cb)
             (.push callbacks cb)))))
     callbacks))
 
-(defn dispatch-on-removed [^Context context key ^js obj node-config]
+(defn dispatch-on-removed [^Context context entity-context entity-id ^js entity-obj entity-config]
   (let [systems (.-systems context)
         callbacks (array)]
-    (doseq [[k v] node-config]
+    (doseq [[k v] entity-config]
       (when-let [sys (get systems k)]
-        (let [cb (system-protocol/on-entity-removed sys key obj v)]
+        (let [cb (system-protocol/on-entity-removed sys entity-context entity-id entity-obj v)]
           (when (fn? cb)
             (.push callbacks cb)))))
     callbacks))

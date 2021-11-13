@@ -13,5 +13,6 @@
                   ^js beforeRenderCb
                   ^js afterRenderCb
                   entityTypes
-                  systems]
+                  systems
+                  ^js defaultCamera]
   Object)

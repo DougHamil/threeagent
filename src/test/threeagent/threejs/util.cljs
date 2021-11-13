@@ -23,3 +23,11 @@
 
 (defn child-count [obj]
   (.-length (.-children obj)))
+
+(defn get-in-object [parent path]
+  (if (seq path)
+    (let [next (first path)]
+      (if (string? next)
+        (recur (.getObjectByName parent next) (rest path))
+        (recur (aget (.-children parent) next) (rest path))))
+    parent))

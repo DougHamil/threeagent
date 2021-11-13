@@ -13,9 +13,9 @@
   (init [_ _ctx]
     (swap! init-state conj :attach))
   (destroy [_ _ctx])
-  (on-entity-added [_ _id ^js obj _config]
+  (on-entity-added [_ _ _id ^js obj _config]
     (set! (.-theState obj) sys-state))
-  (on-entity-removed [_ _id ^js obj _config]
+  (on-entity-removed [_ _ _id ^js obj _config]
     #(set! (.-theState obj) nil))
   (tick [_ _]))
 
@@ -24,10 +24,10 @@
   (init [_ _ctx]
     #(swap! init-state conj :use))
   (destroy [_ _ctx])
-  (on-entity-added [_ _ ^js obj {:keys [entity-id]}]
+  (on-entity-added [_ _ _ ^js obj {:keys [entity-id]}]
     (let [state (.-theState obj)]
       #(swap! state conj entity-id)))
-  (on-entity-removed [_ _ ^js obj {:keys [entity-id]}]
+  (on-entity-removed [_ _ _ ^js obj {:keys [entity-id]}]
     (let [state (.-theState obj)]
       #(swap! state disj entity-id)))
   (tick [_ _]))

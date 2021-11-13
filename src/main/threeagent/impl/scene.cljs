@@ -13,11 +13,15 @@
 (defn- raw-context->context [^Context raw-ctx]
   {:threejs-renderer (.-renderer raw-ctx)
    :threejs-scene (.-sceneRoot raw-ctx)
+   :threejs-default-camera (.-defaultCamera raw-ctx)
    :canvas (.-canvas raw-ctx)})
 
 (defn- in-place-update? [^Context ctx ^vscene/Node node]
   (let [entity-type (get (.-entityTypes ctx) (:component-key (.-data node)))]
     (satisfies? entity/IUpdateableEntityType entity-type)))
+
+(defn- portal? [^vscene/Node node]
+  (some? (.-portalPath node)))
 
 (defn- on-entity-removed [^Context ctx ^vscene/Node node ^three/Object3D old-obj old-component-config]
   ;; Lifecycle Hooks
@@ -25,7 +29,7 @@
     (callback old-obj))
   (when-let [on-removed (:on-removed old-component-config)]
     (on-removed old-obj))
-  (let [callbacks (systems/dispatch-on-removed ctx (.-id node) old-obj old-component-config)]
+  (let [callbacks (systems/dispatch-on-removed ctx (.-context node) (.-id node) old-obj old-component-config)]
     (when (.-isCamera old-obj)
       (when (.-active old-obj)
         (set! (.-camera ctx) (.-lastCamera ctx)))
@@ -41,7 +45,7 @@
     (on-added obj))
   (when-let [ref (:ref component-config)]
     (ref obj))
-  (let [callbacks (systems/dispatch-on-added ctx (.-id node) obj component-config)]
+  (let [callbacks (systems/dispatch-on-added ctx (.-context node) (.-id node) obj component-config)]
     (when (.-isCamera obj)
       (when (.-active obj)
         (set! (.-lastCamera ctx) (.-camera ctx))
@@ -54,39 +58,57 @@
                 component-key
                 position
                 rotation
-                scale]} (.-data node)
-        entity-type (get (.-entityTypes ctx) component-key)
-        obj (entity/create entity-type component-config)]
-    (threejs/set-position! obj position)
-    (threejs/set-rotation! obj rotation)
-    (threejs/set-scale! obj scale)
-    obj))
-  
+                scale]} (.-data node)]
+    (if-let [entity-type (get (.-entityTypes ctx) component-key)]
+      (let [obj (entity/create entity-type (.-context node) component-config)]
+        (threejs/set-position! obj position)
+        (threejs/set-rotation! obj rotation)
+        (threejs/set-scale! obj scale)
+        obj)
+      (throw (js/Error. (str "Cannot find entity-type for keyword '" (str component-key) "'")
+                        node)))))
+
+(defn- resolve-portal-object [^three/Object3D default-parent ^vscene/Node node]
+  (let [path (.-portalPath node)
+        parent (threejs/get-in default-parent path)]
+    (when-not parent
+      (js/console.error (str "Invalid portal path '" path "'")
+                        default-parent)
+      (throw (js/Error. (str "Portal path '" path "' is invalid."))))
+    parent))
+
 (defn- create-entity
-  [^Context ctx ^three/Object3D parent-object ^vscene/Node node]
-  (let [{:keys [component-config]} (.-data node)
-        obj (create-entity-object ctx node)]
-    (.add parent-object obj)
-    (set! (.-threejs node) obj)
-    (let [post-added-fns (on-entity-added ctx node obj component-config)]
-      (.for-each-child node (partial create-entity ctx obj))
-      (doseq [cb post-added-fns]
-        (cb)))
-    obj))
+  ([^Context ctx ^three/Object3D parent-object ^vscene/Node node]
+   (create-entity ctx parent-object node (portal? node)))
+  ([^Context ctx ^three/Object3D parent ^vscene/Node node portal?]
+   (let [{:keys [component-config]} (.-data node)
+         obj (if portal?
+               (resolve-portal-object parent node)
+               (create-entity-object ctx node))]
+     (when-not portal?
+       (.add parent obj))
+     (set! (.-threejs node) obj)
+     (let [post-added-fns (on-entity-added ctx node obj component-config)]
+       (.for-each-child node (partial create-entity ctx obj))
+       (doseq [cb post-added-fns]
+         (cb)))
+     obj)))
 
 (defn- destroy-entity
-  [^Context ctx ^vscene/Node node]
-  (let [{:keys [component-key
-                component-config]} (.-data node)
-        entity-type (get (.-entityTypes ctx) component-key)
-        obj  ^three/Object3D (.-threejs node)]
-    (let [post-removed-fns (on-entity-removed ctx node obj component-config)]
-      (.for-each-child node (partial destroy-entity ctx))
-      (doseq [cb post-removed-fns]
-        (cb))
-      (when-let [parent (.-parent obj)]
-        (.remove parent obj)))
-    (entity/destroy! entity-type obj)))
+  ([^Context ctx ^vscene/Node node]
+   (if (portal? node)
+     (.for-each-child node (partial destroy-entity ctx))
+     (let [{:keys [component-key
+                   component-config]} (.-data node)
+           entity-type (get (.-entityTypes ctx) component-key)
+           obj  ^three/Object3D (.-threejs node)]
+       (let [post-removed-fns (on-entity-removed ctx node obj component-config)]
+         (.for-each-child node (partial destroy-entity ctx))
+         (doseq [cb post-removed-fns]
+           (cb))
+         (when-let [parent (.-parent obj)]
+           (.remove parent obj)))
+       (entity/destroy! entity-type (.-context node) obj component-config)))))
 
 (defn- update-entity
   [^Context ctx ^vscene/Node node old-data new-data]
@@ -99,7 +121,7 @@
         obj  ^three/Object3D (.-threejs node)]
     (doseq [cb (on-entity-removed ctx node obj (:component-config old-data))]
       (cb))
-    (entity/update! entity-type obj component-config)
+    (entity/update! entity-type (.-context node) obj component-config)
     (threejs/set-position! obj position)
     (threejs/set-rotation! obj rotation)
     (threejs/set-scale! obj scale)
@@ -118,20 +140,24 @@
     (threejs/set-scale! obj scale)))
 
 (defn- replace-entity
-  "Destroy and recreate an entity at a give node in the scene-graph"
+  "Destroy and recreate an entity at a given node in the scene-graph"
   [^Context ctx ^vscene/Node node old-data new-data]
   (let [old-obj (.-threejs node)
+        {old-component-key :component-key
+         old-component-config :component-config} old-data
+        old-entity-type (get (.-entityTypes ctx) old-component-key)
         parent-obj (.-parent old-obj)
-        children (.-children old-obj)
-        new-obj (create-entity-object ctx node)]
-    (on-entity-removed ctx node old-obj (:component-config old-data))
-    (set! (.-threejs node) new-obj)
-    (.remove parent-obj old-obj)
-    (.add parent-obj new-obj)
-    (when-not (.terminal? node)
-      (doseq [child (aclone children)]
-        (.add new-obj child)))
-    (on-entity-added ctx node new-obj (:component-config new-data))))
+        children (.-children old-obj)]
+    (on-entity-removed ctx node old-obj old-component-config)
+    (entity/destroy! old-entity-type (.-context node) old-obj old-component-config)
+    (let [new-obj (create-entity-object ctx node)]
+      (set! (.-threejs node) new-obj)
+      (.remove parent-obj old-obj)
+      (.add parent-obj new-obj)
+      (when-not (.terminal? node)
+        (doseq [child (aclone children)]
+          (.add new-obj child)))
+      (on-entity-added ctx node new-obj (:component-config new-data)))))
 
 (defn- init-scene! [^Context context virtual-scene scene-root]
   (create-entity context scene-root (.-root virtual-scene)))
@@ -157,7 +183,7 @@
     :remove
     (destroy-entity context node)
 
-    :update 
+    :update
     (case (update-type context node old-data new-data)
       :replace-entity (try
                         (replace-entity context node old-data new-data)
@@ -168,12 +194,12 @@
                        (update-entity context node old-data new-data)
                        (catch :default ex
                          (js/console.error "Failed to update entity" ex
-                                            (clj->js (.-data node)))))
+                                           (clj->js (.-data node)))))
       :transform-entity (try
                           (transform-entity context node)
                           (catch :default ex
                             (js/console.error "Failed to transform entity" ex
-                                            (clj->js (.-data node))))))))
+                                              (clj->js (.-data node))))))))
 
 (defn- animate [^Context context]
   (let [stats (.-stats context)
@@ -238,6 +264,7 @@
     ;; Systems are initialized before first virtual-render
     (systems/dispatch-init systems {:threejs-renderer renderer
                                     :threejs-scene scene-root
+                                    :threejs-default-camera camera
                                     :canvas canvas})
     (let [virtual-scene (vscene/create root-fn)
           context (Context. virtual-scene
@@ -248,7 +275,8 @@
                                  on-before-render
                                  on-after-render
                                  (merge builtin-entity-types entity-types)
-                                 systems)]
+                                 systems
+                                 camera)]
       (init-scene! context virtual-scene scene-root)
       (.push contexts context)
       (.setAnimationLoop renderer #(animate context))
@@ -273,6 +301,7 @@
     (set! (.-entityTypes old-context) (merge builtin-entity-types entity-types))
     (systems/dispatch-init systems {:threejs-renderer renderer
                                     :threejs-scene scene-root
+                                    :threejs-default-camera (.-defaultCamera old-context)
                                     :canvas (.-canvas old-context)})
     (let [new-virtual-scene (vscene/create root-fn)]
       (init-scene! old-context new-virtual-scene scene-root)
