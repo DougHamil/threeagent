@@ -13,6 +13,7 @@
 (defn- raw-context->context [^Context raw-ctx]
   {:threejs-renderer (.-renderer raw-ctx)
    :threejs-scene (.-sceneRoot raw-ctx)
+   :threejs-default-camera (.-defaultCamera raw-ctx)
    :canvas (.-canvas raw-ctx)})
 
 (defn- in-place-update? [^Context ctx ^vscene/Node node]
@@ -263,6 +264,7 @@
     ;; Systems are initialized before first virtual-render
     (systems/dispatch-init systems {:threejs-renderer renderer
                                     :threejs-scene scene-root
+                                    :threejs-default-camera camera
                                     :canvas canvas})
     (let [virtual-scene (vscene/create root-fn)
           context (Context. virtual-scene
@@ -273,7 +275,8 @@
                                  on-before-render
                                  on-after-render
                                  (merge builtin-entity-types entity-types)
-                                 systems)]
+                                 systems
+                                 camera)]
       (init-scene! context virtual-scene scene-root)
       (.push contexts context)
       (.setAnimationLoop renderer #(animate context))
@@ -298,6 +301,7 @@
     (set! (.-entityTypes old-context) (merge builtin-entity-types entity-types))
     (systems/dispatch-init systems {:threejs-renderer renderer
                                     :threejs-scene scene-root
+                                    :threejs-default-camera (.-defaultCamera old-context)
                                     :canvas (.-canvas old-context)})
     (let [new-virtual-scene (vscene/create root-fn)]
       (init-scene! old-context new-virtual-scene scene-root)
