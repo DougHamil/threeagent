@@ -105,3 +105,28 @@ Now, if we ever mutate our `number-of-boxes` atom, Threeagent will automatically
 
 
 While we use the `threeagent.core/atom` function to create the atom, this atom is actually a Reagent reactive-atom. This means we can use all of the normal Reagent functions to interact with it. Even better, it means we can share our application state between Threeagent and Reagent. So, we could create a 2D interface in HTML via Reagent, and a 3D scene in ThreeJS via Threeagent!
+
+## Entities
+
+Each element in our hiccup-defined scene-graph is called an `entity`. Each entity is of a specific [entity-type](./extending_threeagent.md) and has a map of properties defining its behavior. Ultimately, a Threeagent entity corresponds to a ThreeJS object instance.
+
+There are 2 lifecycle events for entities: 
+* `added` occurs when Threeagent adds this entity to the ThreeJS scene graph
+* `removed` occurs when Threeagent removes this entity from the ThreeJS scene graph
+
+We can respond to these lifecycle events to add custom behavior and access the underlying ThreeJS object of
+an entity. See [Extending Threeagent](./extending_threeagent.md) for more information.
+
+Additionally, we can set the `:id` property of an entity to specify our own identifiers for an entity. This
+has no importance to Threeagent, but it will be passed along to the `ISystem` and `IEntityType` lifecycle event methods. This can be a useful way to keep track of entities, or to demark special entities in our scene.
+For example:
+
+```clojure
+[:object {:id "world"}
+  [:object {:id "player"}]
+  [:object {:id "zombie"}]
+  [:object {:id "zombie"}]] ;; ID conflict!
+```
+
+Note that Threeagent does _not_ check or enforce that IDs are unique across entities. While ID conflicts won't
+affect Threeagent's operation, it would be problematic if we are using entity-ids to track entities in our global state.

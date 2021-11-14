@@ -8,6 +8,8 @@
    ["Built-in Entity Types" {:file "doc/built_in_entity_types.md"}]]
   ["Advanced" {}
    ["Extending Threeagent" {:file "doc/extending_threeagent.md"}]
+   ["Portals" {:file "doc/portals.md"}]
+   ["Contexts" {:file "doc/contexts.md"}]
    ["Shadows" {:file "doc/shadows.md"}]]
   ["FAQ" {:file "doc/faq.md"}]]}
  
