@@ -12,5 +12,6 @@
    ["Portals" {:file "doc/portals.md"}]
    ["Contexts" {:file "doc/contexts.md"}]
    ["Shadows" {:file "doc/shadows.md"}]]
+  ["Upgrading to v1.x" {:file "doc/migration_v1.md"}]
   ["FAQ" {:file "doc/faq.md"}]]}
  
