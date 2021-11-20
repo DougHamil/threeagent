@@ -88,10 +88,6 @@ jobs:
             git config --global user.signingkey C89350FC
             git remote set-url origin https://github.com/DougHamil/threeagent.git
       - run:
-          name: Generate changelog
-          command: |
-            github_changelog_generator -u DougHamil -p threeagent
-      - run:
           name: Release rc
           command: lein release :patch
 
