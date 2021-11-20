@@ -1,5 +1,6 @@
 # threeagent
 [![CircleCI](https://circleci.com/gh/DougHamil/threeagent/tree/main.svg?style=svg)](https://circleci.com/gh/DougHamil/threeagent/tree/main)
+[![cljdoc badge](https://cljdoc.org/badge/doughamil/threeagent)](https://cljdoc.org/d/doughamil/threeagent)
 
 ClojureScript library for building Three.js apps in a reagent-like fashion
 
@@ -59,11 +60,7 @@ For lein-cljsbuild, add an npm-deps entry on THREE.js:
 
 ## Documentation
 
-Please see https://doughamil.github.io/threeagent for the full documentation.
-
-## Example Projects
-
-As a demonstration of the capabilities as well as for reference, please see [these example projects](https://github.com/DougHamil/threeagent-examples)
+The latest documentation is available [here](https://cljdoc.org/d/doughamil/threeagent)
 
 ## Development
 

@@ -4,7 +4,7 @@
    ["Installation" {:file "doc/installation.md"}]
    ["Concepts" {:file "doc/concepts.md"}]
    ["Quick Start" {:file "doc/quick_start.md"}]
-   ["Accessing ThreeJS Objects" {:file "./accessing_threejs.md"}]]
+   ["Accessing ThreeJS Objects" {:file "doc/accessing_threejs.md"}]]
   ["References" {}
    ["Built-in Entity Types" {:file "doc/built_in_entity_types.md"}]]
   ["Advanced" {}
