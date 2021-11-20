@@ -6,6 +6,9 @@ executors:
       - image: douggernaut/threeagent-ci:0.0.1
     working_directory: /tmp/workspace
 
+orbs:
+  changelog: onimur/github-changelog-generator@2.1.9
+
 jobs:
   build:
     executor: my-executor
@@ -84,10 +87,28 @@ jobs:
             git config --global user.signingkey C89350FC
             git remote set-url origin https://github.com/DougHamil/threeagent.git
       - run:
+          name: Generate changelog
+          command: |
+            github_changelog_generator -u DougHamil -p threeagent
+      - run:
           name: Release rc
           command: lein release :patch
 
 workflows:
+  changelog:
+    jobs:
+      - changelog/changelog-default:
+          pre-steps:
+            - checkout
+          branch: main
+          commit-message: "[skip ci] Update CHANGELOG"
+          git-push: true
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v\d+\.\d+\.\d+$/
+
   build-test-deploy:
     jobs:
       - build
@@ -116,7 +137,6 @@ workflows:
           requires:
             - render_test
             - test
-
       - release:
           filters:
             branches:
