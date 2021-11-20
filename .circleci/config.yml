@@ -96,8 +96,11 @@ workflows:
       - changelog/changelog-default:
           pre-steps:
             - checkout
+            - add_ssh_keys:
+                fingerprints:
+                  - "04:0f:c2:c2:05:9e:ba:ea:eb:73:ac:54:ad:3f:2e:40"
           branch: main
-          commit-message: "[skip ci] Update CHANGELOG"
+          commit-message: "Update CHANGELOG"
           git-push: true
           filters:
             branches:
