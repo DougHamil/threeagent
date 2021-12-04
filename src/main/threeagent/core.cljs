@@ -1,7 +1,6 @@
 (ns threeagent.core
   (:refer-clojure :exclude [atom])
   (:require [threeagent.impl.scene :as scene]
-            [threeagent.impl.types :refer [Context]]
             [reagent.ratom :as ratom]))
 
 (def atom ratom/atom)
@@ -22,3 +21,7 @@
   ([root-fn dom-root] (render root-fn dom-root {}))
   ([root-fn dom-root opts] (scene/render root-fn dom-root opts)))
 
+(defn render-react-native
+  "Renders the Threeagent scene using the provided renderer."
+  [root-fn renderer opts]
+  (scene/render root-fn nil (assoc opts :renderer renderer)))

@@ -1,0 +1,11 @@
+{:source-paths ["src" "../src/main"]
+
+ :dependencies [[reagent "1.1.0"]
+                [medley "1.0.0"]]
+
+ :builds       {:app {:target           :react-native
+                      :init-fn          app/init
+                      :output-dir       "app"
+                      :compiler-options {:infer-externs :auto}
+                      :devtools         {:autoload true
+                                         :preloads [shadow.expo.keep-awake]}}}}

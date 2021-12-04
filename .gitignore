@@ -2,6 +2,8 @@ node_modules/
 resources/public/js
 examples/public/js
 
+.expo/
+
 /target
 /checkouts
 /src/gen

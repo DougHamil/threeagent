@@ -1,0 +1,31 @@
+{
+  "main": "app/index.js",
+  "scripts": {
+    "server": "npx shadow-cljs server",
+    "start": "npx expo start",
+    "android": "npx expo start --android",
+    "ios": "npx expo start --ios",
+    "web": "npx expo start --web",
+    "web-only": "npx expo start --web-only",
+    "release": "npx shadow-cljs release app",
+    "eject": "npx expo eject"
+  },
+  "dependencies": {
+    "expo": "^43.0.3",
+    "expo-cli": "^4.13.0",
+    "expo-file-system": "^13.0.3",
+    "expo-gl": "^11.0.3",
+    "expo-status-bar": "^1.1.0",
+    "expo-three": "^6.0.1",
+    "react": "16.13.1",
+    "react-dom": "16.13.1",
+    "react-native": "https://github.com/expo/react-native/archive/sdk-42.0.0.tar.gz",
+    "react-native-web": "~0.13.12",
+    "three": "^0.135.0"
+  },
+  "devDependencies": {
+    "babel-preset-expo": "^8.5.1",
+    "shadow-cljs": "^2.15.3"
+  },
+  "private": true
+}

@@ -202,11 +202,11 @@
                                               (clj->js (.-data node))))))))
 
 (defn- animate [^Context context]
-  (let [stats (.-stats context)
-        clock (.-clock context)
+  (let [stats ^js (.-stats context)
+        clock ^js (.-clock context)
         virtual-scene ^vscene/Scene (.-virtualScene context)
-        renderer (.-renderer context)
-        composer (.-composer context)
+        renderer ^js (.-renderer context)
+        composer ^js (.-composer context)
         scene-root (.-sceneRoot context)
         before-render-cb (.-beforeRenderCb context)
         after-render-cb (.-afterRenderCb context)]
@@ -233,10 +233,11 @@
       (.end stats))))
 
 (defn- get-canvas [dom-root]
-  (if (= "canvas" (string/lower-case (.-tagName dom-root)))
-    dom-root
-    (let [c (.createElement js/document "canvas")]
-      (.appendChild dom-root c))))
+  (when dom-root
+    (if (= "canvas" (string/lower-case (.-tagName dom-root)))
+      dom-root
+      (let [c (.createElement js/document "canvas")]
+        (.appendChild dom-root c)))))
 
 (defn- set-shadow-map! [renderer shadow-map]
   (when shadow-map
@@ -245,21 +246,35 @@
       (set! (.-type sm) (or (:type shadow-map)
                             three/PCFShadowMap)))))
 
-
-(defn- ^Context create-context [root-fn dom-root {:keys [on-before-render
-                                                         on-after-render
-                                                         shadow-map
-                                                         systems
-                                                         entity-types]}]
+(defn- dom--create-default-renderer [dom-root]
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
-        renderer (new three/WebGLRenderer (clj->js {:canvas canvas}))
-        camera (three/PerspectiveCamera. 75 (/ width height) 0.1 1000)
+        renderer (new three/WebGLRenderer (clj->js {:canvas canvas}))]
+    (.setSize renderer width height)
+    {:canvas canvas
+     :renderer renderer}))
+
+(defn- ^Context create-context [root-fn dom-root {:keys [on-before-render
+                                                         on-after-render
+                                                         renderer
+                                                         shadow-map
+                                                         systems
+                                                         entity-types]}]
+  (let [{:keys [canvas renderer]}
+        (if renderer
+          {:renderer renderer
+           :canvas nil}
+          (dom--create-default-renderer dom-root))
+        render-size ^three/Vector2 (->> (three/Vector2.)
+                                        (.getSize renderer))
+        camera (three/PerspectiveCamera. 75
+                                         (/ (.-x render-size)
+                                            (.-y render-size))
+                                         0.1 1000)
         cameras (array)
         scene-root (new three/Scene)
         clock (new three/Clock)]
-    (.setSize renderer width height)
     (set-shadow-map! renderer shadow-map)
     ;; Systems are initialized before first virtual-render
     (systems/dispatch-init systems {:threejs-renderer renderer

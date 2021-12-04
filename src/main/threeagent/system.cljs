@@ -9,7 +9,7 @@
       {:threejs-renderer <ThreeJS Renderer Instance>
        :threejs-scene <ThreeJS Scene>
        :systems <Map of all systems>
-       :canvas <Canvas DOM Element>}
+       :canvas <Canvas DOM Element, if applicable>}
 
      If the returned value is a function, it will be invoked immediately after all remaining
      `ISystem/init` have initialized. Otherwise, the returned value is ignored.
@@ -24,7 +24,7 @@
       {:threejs-renderer <ThreeJS Renderer Instance>
        :threejs-scene <ThreeJS Scene>
        :systems <Map of all systems>
-       :canvas <Canvas DOM Element>}
+       :canvas <Canvas DOM Element, if applicable>}
 
      If the returned value is a function, it will be invoked immediately after all remaining
      `ISystem/destroy` have been invoked. Otherwise, the returned value is ignored.
