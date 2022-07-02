@@ -17,7 +17,7 @@
     "karma-junit-reporter": "^1.2.0",
     "lodash": ">=4.17.21",
     "looks-same": "^7.2.1",
-    "minimist": ">=1.2.3",
+    "minimist": ">=1.2.6",
     "puppeteer": "^8.0.0",
     "shadow-cljs": "^2.10.15"
   }
