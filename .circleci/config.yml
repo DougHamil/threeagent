@@ -53,7 +53,7 @@ jobs:
             - npm-
       - run:
           name: Building cljs
-          command: lein cljsbuild once render-test
+          command: npx shadow-cljs compile render-test
       - run:
           name: "Running render test"
           command: node ./tests/render_test/run.js
