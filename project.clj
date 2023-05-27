@@ -55,7 +55,7 @@
                         :asset-path "js/out"
                         :aot-cache false
                         :install-deps true
-                        :npm-deps {:three "0.100.0"}}}
+                        :npm-deps {:three "0.152.0"}}}
             {:id "dev"
              :source-paths ["src/main" "src/dev"]
              :figwheel {:on-jsload "threeagent.dev.core/on-js-reload"}
@@ -67,7 +67,7 @@
                         :asset-path "js/out"
                         :aot-cache false
                         :install-deps true
-                        :npm-deps {:three "0.118.0"}}}]}
+                        :npm-deps {:three "0.152.0"}}}]}
 
   :release-tasks [["vcs" "assert-committed"]
                   ["change" "version" "leiningen.release/bump-version" "release"]

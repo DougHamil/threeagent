@@ -8,6 +8,7 @@
                                  :http-root          "resources/public/js/test"}}
           :ci {:target :karma
                :output-to "target/ci.js"
+               :compiler-options {:output-feature-set :es6}
                :ns-regex "-test$"}
 
           :examples {:target :browser
