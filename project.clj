@@ -20,12 +20,12 @@
 
   :source-paths ["src/main"]
 
-  :plugins [[lein-cljsbuild "1.1.7"]
+  :plugins [[lein-cljsbuild "1.1.8"]
             [lein-doo "0.1.10"]
             [lein-figwheel "0.5.19"]
             [lein-shell "0.5.0"]]
 
-  :profiles {:dev {:dependencies [[org.clojure/clojurescript "1.10.520"]
+  :profiles {:dev {:dependencies [[org.clojure/clojurescript "1.11.54"]
                                   [cider/cider-nrepl "0.20.1-SNAPSHOT"]
                                   [cider/piggieback "0.3.10"]
                                   [figwheel "0.5.18"]
@@ -34,7 +34,7 @@
              :test {:dependencies [[thheller/shadow-cljs "2.10.15"]]
                     :source-paths ["src/main" "src/test"]}}
 
-  :npm {:dependencies [[three "0.100.0"]]}
+  :npm {:dependencies [[three "0.152.0"]]}
 
   :doo {:paths {:karma "node_modules/.bin/karma"}}
 
@@ -43,20 +43,7 @@
              :nrepl-middleware [cider.nrepl/cider-middleware]}
 
   :cljsbuild
-  {:builds [{:id "render-test"
-             :source-paths ["src/render_test"]
-             :watch-paths ["src/main" "src/render_test"]
-             :figwheel {:on-jsload "threeagent.render-test.core/on-js-reload"}
-             :compiler {:optimizations :none
-                        :infer-externs true
-                        :main threeagent.render-test.core
-                        :output-dir "tests/render_test/js/out"
-                        :output-to "tests/render_test/js/main.js"
-                        :asset-path "js/out"
-                        :aot-cache false
-                        :install-deps true
-                        :npm-deps {:three "0.100.0"}}}
-            {:id "dev"
+  {:builds [{:id "dev"
              :source-paths ["src/main" "src/dev"]
              :figwheel {:on-jsload "threeagent.dev.core/on-js-reload"}
              :compiler {:optimizations :none
@@ -67,7 +54,7 @@
                         :asset-path "js/out"
                         :aot-cache false
                         :install-deps true
-                        :npm-deps {:three "0.118.0"}}}]}
+                        :npm-deps {:three "0.152.0"}}}]}
 
   :release-tasks [["vcs" "assert-committed"]
                   ["change" "version" "leiningen.release/bump-version" "release"]

@@ -57,3 +57,5 @@
                           (.getElementById js/document "root")
                           {:on-before-render on-before-render}))
 
+
+(defn init [])
