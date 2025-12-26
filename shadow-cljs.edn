@@ -1,6 +1,6 @@
 {:source-paths ["src/main" "src/test" "examples/src" "src/render_test"]
  :dependencies [[medley "1.0.0"]
-                [reagent "0.8.1"]]
+                [reagent "2.0.1"]]
  :builds {:test     {:target    :browser-test
                      :test-dir  "resources/public/js/test"
                      :ns-regexp "-test$"
@@ -14,7 +14,7 @@
           :render-test {:target :browser
                         :output-dir "tests/render_test/js"
                         :modules {:main {:init-fn threeagent.render-test.core/init}}
-                        :devtools {:http-root "resources/public" :http-port 8080}}
+                        :devtools {:http-root "tests/render_test" :http-port 8080}}
 
           :examples {:target :browser
                      :modules {:main {:init-fn shadows.app/init}}
