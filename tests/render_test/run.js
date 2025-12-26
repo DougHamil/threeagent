@@ -17,7 +17,18 @@ server = app.listen(port, () => {
   (async () => {
       try {
 	console.log("Launching browser...");
-        const browser = await puppeteer.launch({defaultViewport: {width: 1920, height:1080}});
+        const browser = await puppeteer.launch({
+         headless: true, // Use modern headless mode
+         defaultViewport: { width: 1920, height: 1080 },
+          args: [
+          '--no-sandbox',                // Required for Docker
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',     // Forces use of /tmp instead of /dev/shm to prevent hangs
+          '--use-gl=angle',              // Essential for WebGL in headless
+          '--use-angle=swiftshader',     // CPU-based WebGL rendering (fixes the context error)
+          '--mute-audio'
+          ]
+	});
 	console.log("Opening tab...");
         const page = await browser.newPage();
 
