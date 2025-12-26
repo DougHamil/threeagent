@@ -3,7 +3,7 @@ version: 2.1
 executors:
   my-executor:
     docker:
-      - image: douggernaut/threeagent-ci:0.0.1
+      - image: cimg/clojure:1.11.4-openjdk-21.0-browsers
     working_directory: /tmp/workspace
 
 orbs:
