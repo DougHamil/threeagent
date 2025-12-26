@@ -11,10 +11,12 @@ module.exports = function(config) {
                 base: 'ChromeHeadless',
                 flags: [
                     '--no-sandbox',                // Required for Docker
-                    '--disable-gpu',               // Prevents the GPU crashes in your logs
-                    '--disable-dev-shm-usage',      // Prevents memory issues in CI
-                    '--disable-software-rasterizer',
-                    '--remote-debugging-port=9222'
+                    '--disable-dev-shm-usage',
+	            '--use-gl=angle',             // Use the ANGLE graphics abstraction layer
+	            '--use-angle=swiftshader',    // Force software rendering via SwiftShader (CPU-based)
+	            '--use-vulkan=off',           // Ensure Vulkan doesn't interfere with the software fallback
+	            '--mute-audio',
+	            '--remote-debugging-port=9222'
                 ]
             }
         },
