@@ -16,13 +16,19 @@ app.use(express.static('tests/render_test'))
 server = app.listen(port, () => {
   (async () => {
       try {
+	console.log("Launching browser...");
         const browser = await puppeteer.launch({defaultViewport: {width: 1920, height:1080}});
+	console.log("Opening tab...");
         const page = await browser.newPage();
 
+	console.log("Navigating to page...");
         await page.goto('http://localhost:8080/index.html');
+	console.log("Sleeping for 5s...");
         await sleep(5000);
+	console.log("Taking screenshot...");
         await page.screenshot({path: "tests/render_test/new.png"});
 
+	console.log("Comparing to baseline...");
         looksSame.createDiff({
           reference: "tests/render_test/baseline.png",
           current: "tests/render_test/new.png",
