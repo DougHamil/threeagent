@@ -181,11 +181,11 @@
                                  (three/DodecahedronGeometry. (or radius 1)
                                                               (or detail 0))))
    :icosahedron (->MeshEntity (fn [{:keys [radius detail]}]
-                                (three/Icosahedron. (or radius 1)
-                                                    (or detail 0))))
+                                (three/IcosahedronGeometry. (or radius 1)
+                                                            (or detail 0))))
    :octahedron (->MeshEntity (fn [{:keys [radius detail]}]
-                               (three/Octahedron. (or radius 1)
-                                                  (or detail 0))))
+                               (three/OctahedronGeometry. (or radius 1)
+                                                          (or detail 0))))
    :tetrahedron (->MeshEntity (fn [{:keys [radius detail]}]
                                 (three/TetrahedronGeometry. (or radius 1)
                                                             (or detail 0))))
