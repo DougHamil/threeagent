@@ -1,6 +1,6 @@
 (ns shadows.app
   (:require [threeagent.core :as th]))
-  
+
 ;; Use reactive atom for storing state
 (defonce state (th/atom {:ticks 0}))
 
@@ -13,14 +13,14 @@
           :receive-shadow true
           :cast-shadow true
           :material {:color color}}]])
-         
+
 ;; Root component render function
 (defn root []
   [:object
-   [:ambient-light {:intensity 0.2}]
+   [:ambient-light {:intensity 0.5}]
    [:object {:rotation [0 0 0]
              :position [0 0 0]}
-    [:point-light {:intensity   0.8
+    [:point-light {:intensity   5.8
                    :position    [1 5 0]
                    :cast-shadow true}]]
    [:object {:position [1.0 0 -4.0]}
@@ -30,9 +30,8 @@
 
 ;; Initialize and begin rendering threeagent scene
 (defn ^:dev/after-load reload []
-  (js/console.log
-   (th/render root (.-body js/document)
-              {:shadow-map {:enabled true}})))
+  (th/render root (.-body js/document)
+             {:shadow-map {:enabled true}}))
 
 (defn init []
   (.setInterval js/window #(swap! state update :ticks inc) 10)

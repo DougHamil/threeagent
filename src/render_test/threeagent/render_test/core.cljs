@@ -8,11 +8,7 @@
                          :time 0
                          :color-1 "red"}))
 
-(defn on-before-render [delta-time])
-
-(defn box [color]
-  [:box {:dims [1 1 1]
-         :material {:color color}}])
+(defn on-before-render [_delta-time])
 
 (defn add-remove-check [a]
   (fn [a]
@@ -39,12 +35,10 @@
 
 (defn root []
   [:object {:position [0 0 0]}
-   [:point-light {:position [0 5 10]
+   [:point-light {:position [0 5 5]
                   :color 0xFFFFFF
-                  :intensity 2.0}]
+                  :intensity 80.0}]
    [add-remove-check-wrapper]
-   [:object {:position [0 2 -10]}
-    [counter]]
    [:object {:position [0 0 -10]}
     [:object {:position [2.25 0 0]}
       [wave "red" 10]]
