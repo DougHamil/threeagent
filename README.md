@@ -21,8 +21,18 @@ For lein-cljsbuild, add an npm-deps entry on THREE.js:
                                  :install-deps true
                                  :npm-deps {:three "0.100.0"}}}]}
 ```
+
+## Example Apps
+
+[Zombie Shooter](https://doughamil.github.io/zombie-threeagent-example/)
+
+[Pong](https://doughamil.github.io/threeagent-examples/pong/)
+
+[Beat Saber Map Editor](https://doughamil.github.io/threeagent-examples/beatsajer/)
+
+[Tetris](https://doughamil.github.io/threeagent-examples/tetris/)
  
-## Example
+## Example Code
 ```clojure
 (ns my-app.core
   (:require [threeagent.core :as th]))
