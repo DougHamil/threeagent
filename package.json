@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "test": "shadow-cljs watch test",
+    "test:ci": "shadow-cljs compile ci && karma start --single-run",
+    "test:render": "shadow-cljs compile render-test && node ./tests/render_test/run.js",
+    "examples": "shadow-cljs watch examples"
+  },
   "dependencies": {
     "@cljs-oss/module-deps": "^1.1.1",
     "cryptiles": "^4.1.3",

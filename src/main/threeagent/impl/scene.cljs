@@ -203,7 +203,7 @@
 
 (defn- animate [^Context context]
   (let [stats (.-stats context)
-        clock (.-clock context)
+        clock ^three/Clock (.-clock context)
         virtual-scene ^vscene/Scene (.-virtualScene context)
         renderer (.-renderer context)
         composer (.-composer context)

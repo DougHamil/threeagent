@@ -49,7 +49,7 @@
 (defn- apply-shadow-settings! [light shadow-cfg]
   (when shadow-cfg
     (let [shadow (.-shadow light)
-          camera-obj (.-camera shadow)
+          camera-obj ^three/Camera (.-camera shadow)
           map-size (merge (:map-size default-light-shadow)
                           (:map-size shadow-cfg))
           camera (merge (:camera default-light-shadow)

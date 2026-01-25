@@ -17,7 +17,7 @@ npm install
 ### Unit Tests (Watch Mode)
 
 ```bash
-npx shadow-cljs watch test
+npm test
 ```
 
 Navigate to http://localhost:8021 to view test results. Tests will re-run automatically when source files change.
@@ -25,8 +25,7 @@ Navigate to http://localhost:8021 to view test results. Tests will re-run automa
 ### Unit Tests (Single Run)
 
 ```bash
-npx shadow-cljs compile ci
-npx karma start --single-run
+npm run test:ci
 ```
 
 Test results are output to the `reports/` directory.
@@ -36,8 +35,7 @@ Test results are output to the `reports/` directory.
 Visual regression tests that compare rendered output against reference images:
 
 ```bash
-npx shadow-cljs compile render-test
-node ./tests/render_test/run.js
+npm run test:render
 ```
 
 If tests fail, a diff image is generated at `tests/render_test/diff.png`.
@@ -45,7 +43,7 @@ If tests fail, a diff image is generated at `tests/render_test/diff.png`.
 ## Running Examples
 
 ```bash
-npx shadow-cljs watch examples
+npm run examples
 ```
 
 Navigate to http://localhost:8080 to view the examples.
