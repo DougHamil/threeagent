@@ -6,7 +6,7 @@
             [threeagent.impl.types :refer [Context]]
             [threeagent.impl.system :as systems]
             [clojure.string :as string]
-            ["three" :as three]))
+            ["three/webgpu" :as three]))
 
 (defonce ^:private contexts (array))
 
@@ -254,7 +254,7 @@
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
-        renderer (new three/WebGLRenderer (clj->js {:canvas canvas}))
+        renderer (new three/WebGPURenderer (clj->js {:canvas canvas}))
         camera (three/PerspectiveCamera. 75 (/ width height) 0.1 1000)
         cameras (array)
         scene-root (new three/Scene)

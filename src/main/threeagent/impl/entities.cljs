@@ -4,7 +4,7 @@
   (:require [threeagent.entity :refer [IEntityType IUpdateableEntityType]]
             [threeagent.impl.threejs :as threejs]
             [threeagent.impl.util :refer [pi pi-times-2 pi-over-2]]
-            ["three" :as three]
+            ["three/webgpu" :as three]
             [clojure.set :refer [rename-keys]]
             [goog.object :as gobject]))
             

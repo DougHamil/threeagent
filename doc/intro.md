@@ -4,6 +4,7 @@
 
 [Threeagent](https://github.com/DougHamil/threeagent) is a ClojureScript library for creating reactive, 3D web applications. It combines the power of [three.js](https://threejs.org) with the simplicity of [Reagent](https://reagent-project.github.io/), making it easy and fun to build 3D apps.
 
+Threeagent uses Three.js's `WebGPURenderer`, which automatically falls back to WebGL 2 on browsers without WebGPU support.
 
 * Familiar [hiccup](https://github.com/weavejester/hiccup)-like syntax
 * Reactive-atoms for state management

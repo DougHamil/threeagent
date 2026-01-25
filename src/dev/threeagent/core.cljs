@@ -1,6 +1,6 @@
 (ns threeagent.dev.core
   (:require [threeagent.core :as th]
-            ["three" :as three]))
+            ["three/webgpu" :as three]))
 
 (enable-console-print!)
 
