@@ -28,6 +28,8 @@ jobs:
 
   test:
     executor: my-executor
+    environment:
+      CHROME_BIN: /usr/bin/google-chrome
     steps:
       - checkout
       - restore_cache:
@@ -45,15 +47,14 @@ jobs:
 
   render_test:
     executor: my-executor
+    environment:
+      CHROME_BIN: /usr/bin/google-chrome
     steps:
       - checkout
       - restore_cache:
           keys:
             - npm-{{ checksum "package-lock.json" }}
             - npm-
-      - run:
-          name: Installing Chrome for Puppeteer
-          command: npx puppeteer browsers install chrome
       - run:
           name: Building cljs
           command: npx shadow-cljs compile render-test

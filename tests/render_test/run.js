@@ -17,8 +17,8 @@ server = app.listen(port, () => {
   (async () => {
       try {
 	console.log("Launching browser...");
-        const browser = await puppeteer.launch({
-         headless: true, // Use modern headless mode
+        const launchOptions = {
+         headless: true,
          defaultViewport: { width: 1920, height: 1080 },
           args: [
           '--no-sandbox',                // Required for Docker
@@ -28,7 +28,13 @@ server = app.listen(port, () => {
           '--use-angle=swiftshader',     // CPU-based WebGL rendering (fixes the context error)
           '--mute-audio'
           ]
-	});
+	};
+        // Use system Chrome if CHROME_BIN is set (e.g., in CI environments)
+        if (process.env.CHROME_BIN) {
+          console.log("Using system Chrome: " + process.env.CHROME_BIN);
+          launchOptions.executablePath = process.env.CHROME_BIN;
+        }
+        const browser = await puppeteer.launch(launchOptions);
 	console.log("Opening tab...");
         const page = await browser.newPage();
 
