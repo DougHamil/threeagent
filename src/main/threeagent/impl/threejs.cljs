@@ -1,6 +1,6 @@
 (ns threeagent.impl.threejs
   (:refer-clojure :exclude [get-in])
-  (:require ["three" :as three]))
+  (:require ["three/webgpu" :as three]))
 
 
 (defn mesh-phong-material [c]

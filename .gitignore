@@ -29,3 +29,4 @@ pom.xml.asc
 reports
 
 .lsp/
+.clj-kondo/.cache

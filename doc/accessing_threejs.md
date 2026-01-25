@@ -6,6 +6,20 @@ pick objects in our scene, or use a physics simulation to directly drive the tra
 
 Threeagent provides a few ways to get access to the ThreeJS substrate.
 
+## Render Context
+
+The `threeagent.core/render` function returns a context map containing the core ThreeJS objects:
+
+```clojure
+(let [ctx (th/render root-fn (.getElementById js/document "root"))]
+  (:threejs-renderer ctx)        ; WebGPURenderer instance
+  (:threejs-scene ctx)           ; Scene instance
+  (:threejs-default-camera ctx)  ; Default PerspectiveCamera
+  (:canvas ctx))                 ; Canvas element
+```
+
+The renderer is a `WebGPURenderer` from `three/webgpu`, which automatically falls back to WebGL 2 on browsers without WebGPU support.
+
 ## Lifecycle Hooks
 
 We can set the `:on-added` and `:on-removed` of any entity to a callback function that will be invoked with

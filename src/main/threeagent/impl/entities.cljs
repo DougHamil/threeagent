@@ -4,7 +4,7 @@
   (:require [threeagent.entity :refer [IEntityType IUpdateableEntityType]]
             [threeagent.impl.threejs :as threejs]
             [threeagent.impl.util :refer [pi pi-times-2 pi-over-2]]
-            ["three" :as three]
+            ["three/webgpu" :as three]
             [clojure.set :refer [rename-keys]]
             [goog.object :as gobject]))
             
@@ -49,7 +49,7 @@
 (defn- apply-shadow-settings! [light shadow-cfg]
   (when shadow-cfg
     (let [shadow (.-shadow light)
-          camera-obj (.-camera shadow)
+          camera-obj ^three/Camera (.-camera shadow)
           map-size (merge (:map-size default-light-shadow)
                           (:map-size shadow-cfg))
           camera (merge (:camera default-light-shadow)

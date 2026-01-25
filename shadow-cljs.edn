@@ -1,6 +1,5 @@
 {:source-paths ["src/main" "src/test" "examples/src" "src/render_test"]
- :dependencies [[medley "1.0.0"]
-                [reagent "2.0.1"]]
+ :dependencies [[reagent "2.0.1"]]
  :builds {:test     {:target    :browser-test
                      :test-dir  "resources/public/js/test"
                      :ns-regexp "-test$"
@@ -19,4 +18,4 @@
           :examples {:target :browser
                      :modules {:main {:init-fn shadows.app/init}}
                      :output-dir "examples/public/js"
-                     :devtools {:http-root "examples/public" :http-port 8080}}}}
+                     :devtools {:http-root "examples/public" :http-port 8085}}}}

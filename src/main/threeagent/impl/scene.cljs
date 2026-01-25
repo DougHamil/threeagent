@@ -6,7 +6,7 @@
             [threeagent.impl.types :refer [Context]]
             [threeagent.impl.system :as systems]
             [clojure.string :as string]
-            ["three" :as three]))
+            ["three/webgpu" :as three]))
 
 (defonce ^:private contexts (array))
 
@@ -203,7 +203,7 @@
 
 (defn- animate [^Context context]
   (let [stats (.-stats context)
-        clock (.-clock context)
+        clock ^three/Clock (.-clock context)
         virtual-scene ^vscene/Scene (.-virtualScene context)
         renderer (.-renderer context)
         composer (.-composer context)
@@ -254,7 +254,7 @@
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
-        renderer (new three/WebGLRenderer (clj->js {:canvas canvas}))
+        renderer (new three/WebGPURenderer (clj->js {:canvas canvas}))
         camera (three/PerspectiveCamera. 75 (/ width height) 0.1 1000)
         cameras (array)
         scene-root (new three/Scene)

@@ -1,6 +1,6 @@
 (ns threeagent.e2e.portal-test
   (:require [cljs.test :refer-macros [deftest is use-fixtures]]
-            ["three" :as three]
+            ["three/webgpu" :as three]
             [threeagent.e2e.fixture :as fixture]
             [threeagent.threejs.util :refer [get-in-object]]
             [threeagent.core :as th]))

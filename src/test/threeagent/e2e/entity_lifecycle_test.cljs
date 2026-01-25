@@ -1,6 +1,6 @@
 (ns threeagent.e2e.entity-lifecycle-test
   (:require [cljs.test :refer-macros [deftest is use-fixtures]]
-            ["three" :as three]
+            ["three/webgpu" :as three]
             [threeagent.e2e.fixture :as fixture]
             [threeagent.entity :refer [IEntityType IUpdateableEntityType]]
             [threeagent.core :as th]))

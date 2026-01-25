@@ -1,4 +1,4 @@
-(defproject doughamil/threeagent "1.0.2-SNAPSHOT"
+(defproject doughamil/threeagent "2.0.0-SNAPSHOT"
   :description "Build Three.js apps in a reagent-like fashion"
   :url "https://github.com/DougHamil/threeagent"
   :license {:name "MIT"}
@@ -13,7 +13,6 @@
                                       :password :env}]]
 
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [medley "1.0.0"]
                  [reagent "0.8.1"]
                  [karma-reporter "3.1.0"]]
 
@@ -34,7 +33,7 @@
              :test {:dependencies [[thheller/shadow-cljs "2.10.15"]]
                     :source-paths ["src/main" "src/test"]}}
 
-  :npm {:dependencies [[three "0.152.0"]]}
+  :npm {:dependencies [[three "0.182.0"]]}
 
   :doo {:paths {:karma "node_modules/.bin/karma"}}
 

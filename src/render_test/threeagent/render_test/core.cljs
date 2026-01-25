@@ -1,6 +1,6 @@
 (ns threeagent.render-test.core
   (:require [threeagent.core :as th]
-            ["three" :as three]))
+            ["three/webgpu" :as three]))
 
 (enable-console-print!)
 
@@ -47,9 +47,11 @@
     [:object {:position [2.5 0 0]}
       [wave "white" 10]]]])
 
-(defonce scene (th/render root
-                          (.getElementById js/document "root")
-                          {:on-before-render on-before-render}))
+(defonce scene (let [ctx (th/render root
+                                    (.getElementById js/document "root")
+                                    {:on-before-render on-before-render})]
+                 (.setClearColor (:threejs-renderer ctx) (three/Color. 0x000000))
+                 ctx))
 
 
 (defn init [])

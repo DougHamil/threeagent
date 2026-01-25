@@ -1,6 +1,5 @@
 (ns threeagent.impl.virtual-scene
-  (:require [medley.core :as medley]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
             [reagent.ratom :as ratom]
             [reagent.core :as reagent])
   (:import [goog.structs PriorityQueue]))
@@ -100,7 +99,7 @@
     (when (not (or (string? key)
                    (number? key)))
       (throw (str "^:key must be a string or number, found: " key)))
-    (doseq [[idx child] (medley/indexed children)]
+    (doseq [[idx child] (map-indexed vector children)]
       (when-let [child-node (->node scene context node idx child)]
         (.set children-map (.-key child-node) child-node)))
     node))
@@ -127,7 +126,7 @@
     (when (not (or (string? key)
                    (number? key)))
       (throw (str "^:key must be a string or number, found: " key)))
-    (doseq [[idx child] (medley/indexed children)]
+    (doseq [[idx child] (map-indexed vector children)]
       (when-let [child-node (->node scene context node idx child)]
         (.set children-map (.-key child-node) child-node)))
     node))

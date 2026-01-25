@@ -18,7 +18,11 @@
    (if (seq steps)
      (let [{:keys [when then]} (first steps)]
        (when)
-       (js/requestAnimationFrame (fn []
-                                   (then)
-                                   (async-run! done (rest steps)))))
+       ;; Wait two frames to ensure animation loop has processed changes
+       (js/requestAnimationFrame
+        (fn []
+          (js/requestAnimationFrame
+           (fn []
+             (then)
+             (async-run! done (rest steps)))))))
      (done))))

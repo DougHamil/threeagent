@@ -1,5 +1,5 @@
 (ns threeagent.entity
-  (:require ["three" :as three]))
+  (:require ["three/webgpu" :as three]))
 
 (defprotocol IEntityType
   (create [this context entity-config]

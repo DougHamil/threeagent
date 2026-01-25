@@ -19,7 +19,7 @@ So, let's add support for our custom entity-type `:model`. We start by implement
 ```clojure
 (ns my-app.model
   (:require [threeagent.entity :refer [IEntityType]]
-            ["three" :as three]))
+            ["three/webgpu" :as three]))
             
 (defn- load-model [path] 
   ;; Returns a Promise with the loaded model...
