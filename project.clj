@@ -13,7 +13,6 @@
                                       :password :env}]]
 
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [medley "1.0.0"]
                  [reagent "0.8.1"]
                  [karma-reporter "3.1.0"]]
 

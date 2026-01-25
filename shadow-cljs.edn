@@ -1,6 +1,5 @@
 {:source-paths ["src/main" "src/test" "examples/src" "src/render_test"]
- :dependencies [[dev.weavejester/medley "1.9.0"]
-                [reagent "2.0.1"]]
+ :dependencies [[reagent "2.0.1"]]
  :builds {:test     {:target    :browser-test
                      :test-dir  "resources/public/js/test"
                      :ns-regexp "-test$"
