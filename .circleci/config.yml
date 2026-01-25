@@ -52,6 +52,9 @@ jobs:
             - npm-{{ checksum "package-lock.json" }}
             - npm-
       - run:
+          name: Installing Chrome for Puppeteer
+          command: npx puppeteer browsers install chrome
+      - run:
           name: Building cljs
           command: npx shadow-cljs compile render-test
       - run:
