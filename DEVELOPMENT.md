@@ -46,7 +46,7 @@ If tests fail, a diff image is generated at `tests/render_test/diff.png`.
 npm run examples
 ```
 
-Navigate to http://localhost:8080 to view the examples.
+Navigate to http://localhost:8085 to view the examples.
 
 ## Development Workflow
 
