@@ -4,8 +4,6 @@
             [reagent.core :as reagent])
   (:import [goog.structs PriorityQueue]))
 
-(defonce ^:private non-component-keys #{:position :rotation :scale})
-
 (defn print-tree
   ([^Node node]
    (print-tree node ""))
@@ -60,10 +58,6 @@
         scene ^Scene (.-scene ctx)]
     (.enqueueForRender scene node render-fn ^js (.-forceReplace ctx))))
 
-(defn- extract-comp-config [config]
-  (let [c (transient config)]
-    (persistent! (reduce #(dissoc! %1 %2) c non-component-keys))))
-
 (defn- node-data [comp-key comp-config]
   {:position (:position comp-config [0 0 0])
    :rotation (:rotation comp-config [0 0 0])
@@ -72,7 +66,8 @@
    :receive-shadow (:receive-shadow comp-config false)
    :id (:id comp-config)
    :component-key comp-key
-   :component-config (extract-comp-config comp-config)}) ;(apply dissoc comp-config non-component-keys)})
+   :component-config (let [c (transient comp-config)]
+                       (persistent! (dissoc! c :position :rotation :scale)))}) ;(apply dissoc comp-config non-component-keys)})
 
 (defmulti ->node (fn [^Scene _scene _context ^Node _parent _key [l & r]]
                    (cond
