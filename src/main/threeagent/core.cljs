@@ -1,7 +1,6 @@
 (ns threeagent.core
   (:refer-clojure :exclude [atom])
   (:require [threeagent.impl.scene :as scene]
-            [threeagent.impl.types :refer [Context]]
             [reagent.ratom :as ratom]))
 
 (def atom ratom/atom)

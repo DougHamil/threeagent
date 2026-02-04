@@ -22,6 +22,12 @@
             (.push callbacks cb)))))
     callbacks))
 
+(defn dispatch-on-updated [^Context context entity-context entity-id ^js entity-obj entity-config]
+  (let [systems (.-systems context)]
+    (doseq [[k v] entity-config]
+      (when-let [sys (get systems k)]
+        (system-protocol/on-entity-updated sys entity-context entity-id entity-obj v)))))
+
 (defn dispatch-on-tick [^Context context delta-time]
   (doseq [[_ system] (.-systems context)]
     (system-protocol/tick system delta-time)))

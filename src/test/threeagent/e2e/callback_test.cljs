@@ -28,3 +28,29 @@
       {:when #(reset! state false)
        :then (fn []
                (is (some? @on-removed-state)))}])))
+
+(deftest on-updated-callback-test
+  (let [on-added-state (atom nil)
+        on-updated-state (atom nil)
+        on-updated-count (atom 0)
+        state (th/atom {:color "red"})
+        root-fn (fn []
+                  [:box {:material {:color (:color @state)}
+                         :on-added #(reset! on-added-state %)
+                         :on-updated (fn [obj]
+                                       (reset! on-updated-state obj)
+                                       (swap! on-updated-count inc))}])]
+    (fixture/async-run!
+     [{:when #(th/render root-fn @canvas)
+       :then (fn []
+               (is (some? @on-added-state))
+               (is (nil? @on-updated-state))
+               (is (= 0 @on-updated-count)))}
+      {:when #(reset! state {:color "blue"})
+       :then (fn []
+               (is (some? @on-updated-state))
+               (is (= @on-added-state @on-updated-state))
+               (is (= 1 @on-updated-count)))}
+      {:when #(reset! state {:color "green"})
+       :then (fn []
+               (is (= 2 @on-updated-count)))}])))

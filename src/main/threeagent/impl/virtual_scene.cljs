@@ -1,10 +1,7 @@
 (ns threeagent.impl.virtual-scene
-  (:require [clojure.set :as set]
-            [reagent.ratom :as ratom]
+  (:require [reagent.ratom :as ratom]
             [reagent.core :as reagent])
   (:import [goog.structs PriorityQueue]))
-
-(defonce ^:private non-component-keys #{:position :rotation :scale})
 
 (defn print-tree
   ([^Node node]
@@ -60,10 +57,6 @@
         scene ^Scene (.-scene ctx)]
     (.enqueueForRender scene node render-fn ^js (.-forceReplace ctx))))
 
-(defn- extract-comp-config [config]
-  (let [c (transient config)]
-    (persistent! (reduce #(dissoc! %1 %2) c non-component-keys))))
-
 (defn- node-data [comp-key comp-config]
   {:position (:position comp-config [0 0 0])
    :rotation (:rotation comp-config [0 0 0])
@@ -72,17 +65,19 @@
    :receive-shadow (:receive-shadow comp-config false)
    :id (:id comp-config)
    :component-key comp-key
-   :component-config (extract-comp-config comp-config)}) ;(apply dissoc comp-config non-component-keys)})
+   :component-config (let [c (transient comp-config)]
+                       (persistent! (dissoc! c :position :rotation :scale)))}) ;(apply dissoc comp-config non-component-keys)})
 
-(defmulti ->node (fn [^Scene _scene _context ^Node _parent _key [l & r]]
-                   (cond
-                     (= :> l) :portal
-                     (keyword? l) :keyword
-                     (fn? l) :fn
-                     (map? l) :context
-                     (sequential? l) :seq
-                     (and (nil? l) (nil? r)) :empty-list
-                     :else nil)))
+(defmulti ->node (fn [^Scene _scene _context ^Node _parent _key form]
+                   (let [l (first form)]
+                     (cond
+                       (= :> l) :portal
+                       (keyword? l) :keyword
+                       (fn? l) :fn
+                       (map? l) :context
+                       (sequential? l) :seq
+                       (nil? l) :empty-list
+                       :else nil))))
 
 (defmethod ->node :default [_scene _context _parent _key form]
   (js/console.error "Invalid object form:" (str form)))
@@ -115,8 +110,9 @@
         first-child (first rs)
         metadata (meta form)
         key (or (:key metadata) key)
-        comp-config (if (map? first-child) first-child {})
-        children (filter some? (if (map? first-child) (rest rs) rs))
+        has-config? (map? first-child)
+        comp-config (if has-config? first-child {})
+        children (filter some? (if has-config? (rest rs) rs))
         children-map (js/Map.)
         data (node-data comp-key comp-config)
         depth (if parent
@@ -141,8 +137,8 @@
   (let [key (or (:key (meta form)) key)
         [f & args] form
         original-meta (meta form)
-        outer-reaction-ctx ^js (clj->js {:scene nil :node nil :reaction nil :forceReplace false})
-        inner-reaction-ctx ^js (clj->js {:scene nil :node nil :reaction nil})
+        outer-reaction-ctx #js {:scene nil, :node nil, :reaction nil, :forceReplace false}
+        inner-reaction-ctx #js {:scene nil, :node nil, :reaction nil}
         outer-render-fn (fn->render-fn original-meta f)
         outer-result (ratom/run-in-reaction #(apply f args)
                                             outer-reaction-ctx
@@ -177,15 +173,16 @@
       (.push (.-reactions node) reaction))
     node))
 
-(defmulti ->node-shallow (fn [_key _context [l & r]]
-                           (cond
-                             (fn? l) :fn
-                             (= :> l) :portal
-                             (keyword? l) :keyword
-                             (map? l) :context
-                             (sequential? l) :seq
-                             (and (nil? l) (nil? r)) :empty-list
-                             :else nil)))
+(defmulti ->node-shallow (fn [_key _context form]
+                           (let [l (first form)]
+                             (cond
+                               (fn? l) :fn
+                               (= :> l) :portal
+                               (keyword? l) :keyword
+                               (map? l) :context
+                               (sequential? l) :seq
+                               (nil? l) :empty-list
+                               :else nil))))
 
 (defmethod ->node-shallow :empty-list [_key _context _form])
 
@@ -200,7 +197,7 @@
    :children-keys [[0 form]]})
 
 (defmethod ->node-shallow :seq [key context form]
-  (when-not (empty? form)
+  (when (seq form)
     (let [m (meta form)]
       (->node-shallow (get-key key m) context (with-meta (into [:object] form) m)))))
 
@@ -221,9 +218,10 @@
 (defmethod ->node-shallow :keyword [key context form]
   (let [[comp-key & rs] form
         first-child (first rs)
-        comp-config (if (map? first-child) first-child {})
+        has-config? (map? first-child)
+        comp-config (if has-config? first-child {})
         children (filter valid-child?
-                         (if (map? first-child) (rest rs) rs))]
+                         (if has-config? (rest rs) rs))]
     {:key key
      :context context
      :data (node-data comp-key comp-config)
@@ -289,7 +287,6 @@
                            (.-context parent)
                            {})
 
-          current-keys (set (es6-iterator-seq (.keys children)))
           rendered-form (if render-fn
                           (apply render-fn (rest new-form))
                           new-form)
@@ -298,8 +295,8 @@
            children-keys :children-keys
            new-portal-path :portal-path
            new-context :context} shallow-node
-          new-keys (set (map first children-keys))
-          dropped-keys (set/difference current-keys new-keys)]
+          new-keys-set (reduce (fn [s [k _]] (conj! s k)) (transient #{}) children-keys)
+          new-keys (persistent! new-keys-set)]
       (cond
         (not= new-context old-context)
         (replace-node! scene node new-form changelog)
@@ -314,10 +311,10 @@
           (set! (.-lastForm node) new-form)
           (.push changelog [node :update old-data new-data])
           ;; Remove children that no longer exist
-          (doseq [child-key dropped-keys]
-            (let [child-node (.get children child-key)]
-              (remove-node! child-node changelog))
-            (.delete children child-key))
+          (doseq [child-key (es6-iterator-seq (.keys children))]
+            (when-not (contains? new-keys child-key)
+              (remove-node! (.get children child-key) changelog)
+              (.delete children child-key)))
           ;; Update existing children and add new children
           (doseq [[child-key child-form] (:children-keys shallow-node)]
             (if-let [child (.get children child-key)]

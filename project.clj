@@ -12,8 +12,8 @@
                                       :username :env
                                       :password :env}]]
 
-  :dependencies [[org.clojure/clojure "1.9.0"]
-                 [reagent "0.8.1"]
+  :dependencies [[org.clojure/clojure "1.12.1"]
+                 [reagent "2.0.1"]
                  [karma-reporter "3.1.0"]]
 
 

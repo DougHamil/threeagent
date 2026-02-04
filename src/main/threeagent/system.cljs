@@ -42,6 +42,16 @@
      `ISystem/on-entity-added` have been invoked for this entity and it's children. 
      Otherwise, the returned value is ignored.
     ")
+  (on-entity-updated [this entity-context entity-id threejs-obj system-config]
+    "
+     Called when an entity's configuration is updated. Note that this will be called any time
+     the entity's configuration changes (and the IEntity implementation supports in-place updates).
+
+     `entity-context`: A map representing the inherited context for this entity
+     `entity-id`: The ID of this entity, when specified via the `:id` property, `nil` otherwise
+     `threejs-obj`: the ThreeJS object instance for this entity 
+     `system-config`: this entity's configuration value for this system's key
+    ")
   (on-entity-removed [this entity-context entity-id threejs-obj system-config]
     "
      Called when an entity is removed from the scene
