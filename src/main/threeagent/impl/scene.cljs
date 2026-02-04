@@ -174,11 +174,14 @@
 (defn- update-type [^Context context ^vscene/Node node o n]
   (cond
     (not= (:component-key o)
-          (:component-key n)) :replace-entity
+          (:component-key n))
+    :replace-entity
 
     (not= (:component-config o)
           (:component-config n))
-    (if (in-place-update? context node)
+    (if (and (in-place-update? context node)
+             (= (:id (:component-config o))
+                (:id (:component-config n))))
       :update-entity
       :replace-entity)
 

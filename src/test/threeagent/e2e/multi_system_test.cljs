@@ -15,6 +15,7 @@
   (destroy [_ _ctx])
   (on-entity-added [_ _ _id ^js obj _config]
     (set! (.-theState obj) sys-state))
+  (on-entity-updated [_ _ _id ^js _obj _config])
   (on-entity-removed [_ _ _id ^js obj _config]
     #(set! (.-theState obj) nil))
   (tick [_ _]))
@@ -27,6 +28,7 @@
   (on-entity-added [_ _ _ ^js obj {:keys [entity-id]}]
     (let [state (.-theState obj)]
       #(swap! state conj entity-id)))
+  (on-entity-updated [_ _ _ ^js _obj _config])
   (on-entity-removed [_ _ _ ^js obj {:keys [entity-id]}]
     (let [state (.-theState obj)]
       #(swap! state disj entity-id)))
