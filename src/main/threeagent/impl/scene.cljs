@@ -5,6 +5,7 @@
             [threeagent.impl.threejs :as threejs]
             [threeagent.impl.types :refer [Context]]
             [threeagent.impl.system :as systems]
+            [threeagent.impl.registry :as registries]
             [clojure.string :as string]
             ["three/webgpu" :as three]))
 
@@ -96,6 +97,7 @@
      (when-not portal?
        (.add parent obj))
      (set! (.-threejs node) obj)
+     (registries/register-entity! (.-entityRegistry ctx) (.-id node) obj)
      (let [post-added-fns (on-entity-added ctx node obj component-config)]
        (.for-each-child node (partial create-entity ctx obj))
        (doseq [cb post-added-fns]
@@ -116,6 +118,7 @@
            (cb))
          (when-let [parent (.-parent obj)]
            (.remove parent obj)))
+       (registries/unregister-entity! (.-entityRegistry ctx) (.-id node))
        (entity/destroy! entity-type (.-context node) obj component-config)))))
 
 (defn- update-entity
@@ -162,6 +165,7 @@
       (when-not (.terminal? node)
         (doseq [child (aclone children)]
           (.add new-obj child)))
+      (registries/register-entity! (.-entityRegistry ctx) (.-id node) new-obj)
       (on-entity-added ctx node new-obj (:component-config new-data)))))
 
 (defn- init-scene! [^Context context virtual-scene scene-root]
@@ -253,6 +257,7 @@
 
 (defn- ^Context create-context [root-fn dom-root {:keys [on-before-render
                                                          on-after-render
+                                                         entity-registry
                                                          shadow-map
                                                          systems
                                                          entity-types]}]
@@ -270,6 +275,7 @@
     (systems/dispatch-init systems {:threejs-renderer renderer
                                     :threejs-scene scene-root
                                     :threejs-default-camera camera
+                                    :entity-registry entity-registry
                                     :canvas canvas})
     (let [virtual-scene (vscene/create root-fn)
           context (Context. virtual-scene
@@ -281,7 +287,8 @@
                                  on-after-render
                                  (merge builtin-entity-types entity-types)
                                  systems
-                                 camera)]
+                                 camera
+                                 entity-registry)]
       (init-scene! context virtual-scene scene-root)
       (.push contexts context)
       (.setAnimationLoop renderer #(animate context))
@@ -292,7 +299,7 @@
   (.clear (.-sceneRoot context)))
 
 (defn- reset-context! [^Context old-context root-fn {:keys [on-before-render on-after-render shadow-map
-                                                            entity-types systems]}]
+                                                            entity-types systems entity-registry]}]
   (let [scene-root        ^js (.-sceneRoot old-context)
         virtual-scene     ^vscene/Scene (.-virtualScene old-context)
         renderer          ^js (.-renderer old-context)]
@@ -304,9 +311,12 @@
     (set! (.-cameras old-context) (array))
     (set! (.-systems old-context) systems)
     (set! (.-entityTypes old-context) (merge builtin-entity-types entity-types))
+    (set! (.-entityRegistry old-context) entity-registry)
+    (registries/reset-registry! (.-entityRegistry old-context))
     (systems/dispatch-init systems {:threejs-renderer renderer
                                     :threejs-scene scene-root
                                     :threejs-default-camera (.-defaultCamera old-context)
+                                    :entity-registry entity-registry
                                     :canvas (.-canvas old-context)})
     (let [new-virtual-scene (vscene/create root-fn)]
       (init-scene! old-context new-virtual-scene scene-root)
