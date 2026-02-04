@@ -96,6 +96,9 @@ To do this, we'll start with defining an implementation of the `ISystem` protoco
   (on-entity-added [this ctx entity-id obj {:keys [on-click]}]
     ;; Store the on-click callback fn for this entity
     (swap! local-state assoc-in [:handlers entity-id] on-click))
+  (on-entity-updated [this ctx entity-id obj {:keys [on-click]}]
+    ;; Update the on-click callback fn when config changes
+    (swap! local-state assoc-in [:handlers entity-id] on-click))
   (on-entity-removed [this ctx entity-id obj config]
     (swap! local-state assoc-in [:handlers entity-id] nil))
   (tick [this delta-time]
@@ -103,16 +106,20 @@ To do this, we'll start with defining an implementation of the `ISystem` protoco
     ))
 ```
 
-The `ISystem` protocol defines 5 different methods:
+The `ISystem` protocol defines 6 different methods:
 1. The `init` method is called when Threeagent is initializing (during the `threeagent.core/render` call).
   It can be used to setup any state needed by the system.
 2. The `destroy` method is called when Threeagent is shutting down. It can be used to cleanup any state.
 3. The `on-entity-added` method is invoked whenever a new entity is added to the scene that has our system's
 property defined. We can access the entity's ThreeJS object, the Threeagent context, and the properties
 defined on this entity for our system.
-4. The `on-entity-removed` method is invoked whenever Threeagent is removing an entity from the scene. We can
+4. The `on-entity-updated` method is invoked whenever an entity's configuration changes and the entity type
+supports in-place updates (implements `IUpdateableEntityType`). This allows systems to respond to configuration
+changes without the entity being fully removed and re-added. The method receives the same arguments as
+`on-entity-added`.
+5. The `on-entity-removed` method is invoked whenever Threeagent is removing an entity from the scene. We can
 use this to clean up any state associated with this particular entity.
-5. The `tick` method is called every frame with the time (in seconds) since the last frame was rendered. This can be used by systems that need to run some logic every frame, such as a physics system.
+6. The `tick` method is called every frame with the time (in seconds) since the last frame was rendered. This can be used by systems that need to run some logic every frame, such as a physics system.
 
 > NOTE: Threeagent does not support the ordering of `ISystem` invocations. Meaning, we cannot control which
 > system will have its `on-entity-added` method called before another, in the case where an entity has
