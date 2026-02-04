@@ -53,6 +53,14 @@
       (.push (.-cameras ctx) obj))
     callbacks))
 
+(defn- on-entity-updated [^Context ctx ^vscene/Node node ^three/Object3D obj component-config]
+  ;; Lifecycle Hooks
+  (when-let [callback (:on-updated (.-meta node))]
+    (callback obj))
+  (when-let [on-added (:on-updated component-config)]
+    (on-added obj))
+  (systems/dispatch-on-updated ctx (.-context node) (.-id node) obj component-config))
+
 (defn- create-entity-object [^Context ctx ^vscene/Node node]
   (let [{:keys [component-config
                 component-key
@@ -111,7 +119,7 @@
        (entity/destroy! entity-type (.-context node) obj component-config)))))
 
 (defn- update-entity
-  [^Context ctx ^vscene/Node node old-data new-data]
+  [^Context ctx ^vscene/Node node _old-data new-data]
   (let [{:keys [component-config
                 component-key
                 position
@@ -119,14 +127,11 @@
                 scale]} new-data
         entity-type (get (.-entityTypes ctx) component-key)
         obj  ^three/Object3D (.-threejs node)]
-    (doseq [cb (on-entity-removed ctx node obj (:component-config old-data))]
-      (cb))
     (entity/update! entity-type (.-context node) obj component-config)
     (threejs/set-position! obj position)
     (threejs/set-rotation! obj rotation)
     (threejs/set-scale! obj scale)
-    (doseq [cb (on-entity-added ctx node obj component-config)]
-      (cb))
+    (on-entity-updated ctx node obj component-config)
     obj))
 
 (defn- transform-entity
