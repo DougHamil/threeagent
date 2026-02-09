@@ -25,11 +25,16 @@
       (set! (.-castShadow mesh) (:cast-shadow config))
       (set! (.-receiveShadow mesh) (:receive-shadow config))
       mesh))
-  (destroy! [_ _ _ _])
+  (destroy! [_ _ ^three/Mesh mesh _]
+    (when-let [geo (.-geometry mesh)]
+      (.dispose geo)))
   IUpdateableEntityType
   (update! [_ _ ^three/Mesh mesh config]
-    (let [geo (geo-fn config)
+    (let [old-geo (.-geometry mesh)
+          geo (geo-fn config)
           mat (->material (:material config))]
+      (when (and old-geo (not (identical? old-geo geo)))
+        (.dispose old-geo))
       (set! (.-geometry mesh) geo)
       (set! (.-material mesh) mat)
       (set! (.-castShadow mesh) (:cast-shadow config))
