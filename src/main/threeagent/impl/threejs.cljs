@@ -6,6 +6,8 @@
 (defn mesh-phong-material [c]
   (new three/MeshPhongMaterial (clj->js c)))
 
+(def ^:private scratch-euler (three/Euler.))
+
 (defn euler [x y z]
   (new three/Euler x y z "XYZ"))
 
@@ -14,7 +16,8 @@
   obj)
 
 (defn set-rotation! [^js obj [x y z]]
-  (.setRotationFromEuler obj (euler x y z))
+  (.set scratch-euler x y z "XYZ")
+  (.setRotationFromEuler obj scratch-euler)
   obj)
 
 (defn set-scale! [^js obj [x y z]]
