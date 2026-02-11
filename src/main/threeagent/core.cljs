@@ -11,11 +11,17 @@
   "Renders the threeagent scene at the specified `dom-root` using
    the `root-fn` as the root component function.
 
-   Additional configuration can be provided through the `opts` parameter
+   Additional configuration can be provided through the `opts` parameter:
+   - `:target-framerate` - Optional. Caps ticks and rendering to the given FPS
+     (e.g., 30). When set, frames are skipped until enough time has elapsed.
+     Systems receive the correct accumulated delta-time. When nil (default),
+     renders at the browser's native refresh rate.
 
    Example:
    ```clojure
-    (threeagent/render my-root-fn (js/document.getElementById \"app\"))
+    (threeagent/render my-root-fn
+                       (js/document.getElementById \"app\")
+                       {:target-framerate 30})
    ```
   "
   ([root-fn dom-root] (render root-fn dom-root {}))
