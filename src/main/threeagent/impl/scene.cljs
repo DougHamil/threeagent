@@ -6,6 +6,7 @@
             [threeagent.impl.types :refer [Context]]
             [threeagent.impl.system :as systems]
             [threeagent.impl.registry :as registries]
+            [threeagent.impl.frame-pacer :as frame-pacer]
             [clojure.string :as string]
             ["three/webgpu" :as three]))
 
@@ -15,7 +16,8 @@
   {:threejs-renderer (.-renderer raw-ctx)
    :threejs-scene (.-sceneRoot raw-ctx)
    :threejs-default-camera (.-defaultCamera raw-ctx)
-   :canvas (.-canvas raw-ctx)})
+   :canvas (.-canvas raw-ctx)
+   :frame-pacer (.-framePacer raw-ctx)})
 
 (defn- in-place-update? [^Context ctx ^vscene/Node node]
   (let [entity-type (get (.-entityTypes ctx) (:component-key (.-data node)))]
@@ -213,36 +215,57 @@
                             (js/console.error "Failed to transform entity" ex
                                               (clj->js (.-data node))))))))
 
+(defn- should-process-frame? [^Context context]
+  (if-let [frame-interval (.-frameInterval context)]
+    (let [now (js/performance.now)
+          elapsed (- now (.-lastFrameTime context))]
+      ;; Use a 1ms tolerance to avoid skipping frames due to vsync jitter
+      ;; on high-refresh displays (e.g. 120Hz where 4 frames = 33.32ms < 33.33ms)
+      (if (>= elapsed (- frame-interval 1.0))
+        (do (set! (.-lastFrameTime context) now)
+            true)
+        false))
+    true))
+
 (defn- animate [^Context context]
-  (let [stats (.-stats context)
-        clock ^three/Clock (.-clock context)
-        virtual-scene ^vscene/Scene (.-virtualScene context)
-        renderer (.-renderer context)
-        composer (.-composer context)
-        scene-root (.-sceneRoot context)
-        before-render-cb (.-beforeRenderCb context)
-        after-render-cb (.-afterRenderCb context)]
-    (when stats
-      (.begin stats))
-    (let [delta-time (.getDelta clock)
-          changelog (array)]
-      (systems/dispatch-on-tick context delta-time)
-      ;; Invoke callbacks
-      (when before-render-cb (before-render-cb delta-time))
-      ;; Render virtual scene
-      (vscene/render! virtual-scene changelog)
-      ;; Apply virtual scene changes to ThreeJs scene
-      (doseq [change changelog]
-        (apply-change! context change))
-      ;; Fetch camera after applying the scene changes since it might have been updated
-      (let [camera (.-camera context)]
-        ;; Render ThreeJS Scene
-        (if composer
-          (.render composer delta-time)
-          (.render renderer scene-root camera)))
-      (when after-render-cb (after-render-cb delta-time)))
-    (when stats
-      (.end stats))))
+  (let [pacer (.-framePacer context)
+        now (js/performance.now)]
+    (when (if pacer
+            (frame-pacer/should-render? pacer now)
+            (should-process-frame? context))
+      (let [render-start now
+            stats (.-stats context)
+            clock ^three/Clock (.-clock context)
+            virtual-scene ^vscene/Scene (.-virtualScene context)
+            renderer (.-renderer context)
+            composer (.-composer context)
+            scene-root (.-sceneRoot context)
+            before-render-cb (.-beforeRenderCb context)
+            after-render-cb (.-afterRenderCb context)]
+        (when stats
+          (.begin stats))
+        (let [delta-time (.getDelta clock)
+              changelog (array)]
+          (systems/dispatch-on-tick context delta-time)
+          ;; Invoke callbacks
+          (when before-render-cb (before-render-cb delta-time))
+          ;; Render virtual scene
+          (vscene/render! virtual-scene changelog)
+          ;; Apply virtual scene changes to ThreeJs scene
+          (doseq [change changelog]
+            (apply-change! context change))
+          ;; Fetch camera after applying the scene changes since it might have been updated
+          (let [camera (.-camera context)]
+            ;; Render ThreeJS Scene
+            (if composer
+              (.render composer delta-time)
+              (.render renderer scene-root camera)))
+          (when after-render-cb (after-render-cb delta-time)))
+        (when stats
+          (.end stats))
+        ;; Record render time for frame pacer
+        (when pacer
+          (frame-pacer/record-render-time! pacer (- (js/performance.now) render-start)))))))
 
 (defn- get-canvas [dom-root]
   (if (= "canvas" (string/lower-case (.-tagName dom-root)))
@@ -263,7 +286,9 @@
                                                          entity-registry
                                                          shadow-map
                                                          systems
-                                                         entity-types]}]
+                                                         entity-types
+                                                         target-framerate
+                                                         auto-frame-pacing]}]
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
@@ -271,7 +296,9 @@
         camera (three/PerspectiveCamera. 75 (/ width height) 0.1 1000)
         cameras (array)
         scene-root (new three/Scene)
-        clock (new three/Clock)]
+        clock (new three/Clock)
+        frame-interval (when (and target-framerate (not auto-frame-pacing))
+                         (* 1000.0 (/ 1.0 target-framerate)))]
     (.setSize renderer width height)
     (set-shadow-map! renderer shadow-map)
     ;; Systems are initialized before first virtual-render
@@ -283,7 +310,7 @@
     (let [virtual-scene (vscene/create root-fn)
           context (Context. virtual-scene
                                  scene-root
-                                 dom-root nil
+                                 dom-root frame-interval
                                  canvas camera cameras
                                  clock renderer
                                  on-before-render
@@ -292,6 +319,10 @@
                                  systems
                                  camera
                                  entity-registry)]
+      (when auto-frame-pacing
+        (set! (.-framePacer context) (frame-pacer/create target-framerate nil)))
+      (when frame-interval
+        (set! (.-lastFrameTime context) (js/performance.now)))
       (init-scene! context virtual-scene scene-root)
       (.push contexts context)
       (.setAnimationLoop renderer #(animate context))
@@ -302,7 +333,8 @@
   (.clear (.-sceneRoot context)))
 
 (defn- reset-context! [^Context old-context root-fn {:keys [on-before-render on-after-render shadow-map
-                                                            entity-types systems entity-registry]}]
+                                                            entity-types systems entity-registry
+                                                            target-framerate auto-frame-pacing]}]
   (let [scene-root        ^js (.-sceneRoot old-context)
         virtual-scene     ^vscene/Scene (.-virtualScene old-context)
         renderer          ^js (.-renderer old-context)]
@@ -326,6 +358,19 @@
       (set! (.-virtualScene old-context) new-virtual-scene)
       (set! (.-beforeRenderCb old-context) on-before-render)
       (set! (.-afterRenderCb old-context) on-after-render)
+      (if auto-frame-pacing
+        (do
+          (set! (.-frameInterval old-context) nil)
+          (if-let [pacer (.-framePacer old-context)]
+            (frame-pacer/reset-pacer! pacer target-framerate nil)
+            (set! (.-framePacer old-context) (frame-pacer/create target-framerate nil))))
+        (do
+          (set! (.-framePacer old-context) nil)
+          (let [frame-interval (when target-framerate
+                                 (* 1000.0 (/ 1.0 target-framerate)))]
+            (set! (.-frameInterval old-context) frame-interval)
+            (when frame-interval
+              (set! (.-lastFrameTime old-context) (js/performance.now))))))
       old-context)))
 
 (defn- find-context [dom-root]

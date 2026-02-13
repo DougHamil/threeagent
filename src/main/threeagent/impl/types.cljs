@@ -4,7 +4,7 @@
 (deftype Context [^vscene/Scene virtualScene
                   ^js sceneRoot
                   ^js domRoot
-                  ^js animateFn
+                  ^js frameInterval
                   ^js canvas
                   ^js camera
                   ^js cameras
