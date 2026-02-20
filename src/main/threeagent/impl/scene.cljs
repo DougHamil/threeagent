@@ -3,21 +3,43 @@
             [threeagent.impl.entities :refer [builtin-entity-types]]
             [threeagent.entity :as entity]
             [threeagent.impl.threejs :as threejs]
-            [threeagent.impl.types :refer [Context]]
+            [threeagent.impl.types :refer [Context SceneContext]]
             [threeagent.impl.system :as systems]
             [threeagent.impl.registry :as registries]
             [threeagent.impl.frame-pacer :as frame-pacer]
             [clojure.string :as string]
-            ["three/webgpu" :as three]))
+            ["three/webgpu" :as three]
+            ["three/tsl" :refer [pass]]))
 
 (defonce ^:private contexts (array))
 
+;; ---------------------------------------------------------------------------
+;; Per-scene field accessor (reads from activeSceneCtx on Context)
+;; ---------------------------------------------------------------------------
+
+(defn- active-scene-ctx ^SceneContext [^Context ctx]
+  (.-activeSceneCtx ctx))
+
+;; ---------------------------------------------------------------------------
+;; Context map construction
+;; ---------------------------------------------------------------------------
+
 (defn- raw-context->context [^Context raw-ctx]
-  {:threejs-renderer (.-renderer raw-ctx)
-   :threejs-scene (.-sceneRoot raw-ctx)
-   :threejs-default-camera (.-defaultCamera raw-ctx)
-   :canvas (.-canvas raw-ctx)
-   :frame-pacer (.-framePacer raw-ctx)})
+  (let [scenes (.-scenes raw-ctx)
+        primary-sctx ^SceneContext (get scenes (.-primarySceneKey raw-ctx))]
+    (cond-> {:threejs-renderer (.-renderer raw-ctx)
+             :threejs-scene (.-sceneRoot primary-sctx)
+             :threejs-default-camera (.-defaultCamera primary-sctx)
+             :canvas (.-canvas raw-ctx)
+             :frame-pacer (.-framePacer raw-ctx)
+             :threejs-scenes (reduce-kv (fn [m k ^SceneContext sctx] (assoc m k (.-sceneRoot sctx))) {} scenes)
+             :scene-cameras (reduce-kv (fn [m k ^SceneContext sctx] (assoc m k (.-camera sctx))) {} scenes)}
+      (.-renderPipeline raw-ctx)
+      (assoc :threejs-render-pipeline (.-renderPipeline raw-ctx)))))
+
+;; ---------------------------------------------------------------------------
+;; Entity helpers (unchanged logic, but per-scene fields via activeSceneCtx)
+;; ---------------------------------------------------------------------------
 
 (defn- in-place-update? [^Context ctx ^vscene/Node node]
   (let [entity-type (get (.-entityTypes ctx) (:component-key (.-data node)))]
@@ -34,10 +56,11 @@
     (on-removed old-obj))
   (let [callbacks (systems/dispatch-on-removed ctx (.-context node) (.-id node) old-obj old-component-config)]
     (when (.-isCamera old-obj)
-      (when (.-active old-obj)
-        (set! (.-camera ctx) (.-lastCamera ctx)))
-      (let [cams (.-cameras ctx)]
-        (.splice cams (.indexOf cams old-obj) 1)))
+      (let [sctx ^js (active-scene-ctx ctx)]
+        (when (.-active old-obj)
+          (set! (.-camera sctx) (.-lastCamera sctx)))
+        (let [cams (.-cameras sctx)]
+          (.splice cams (.indexOf cams old-obj) 1))))
     callbacks))
 
 (defn- on-entity-added [^Context ctx ^vscene/Node node ^three/Object3D obj component-config]
@@ -50,10 +73,11 @@
     (ref obj))
   (let [callbacks (systems/dispatch-on-added ctx (.-context node) (.-id node) obj component-config)]
     (when (.-isCamera obj)
-      (when (.-active obj)
-        (set! (.-lastCamera ctx) (.-camera ctx))
-        (set! (.-camera ctx) obj))
-      (.push (.-cameras ctx) obj))
+      (let [sctx ^js (active-scene-ctx ctx)]
+        (when (.-active obj)
+          (set! (.-lastCamera sctx) (.-camera sctx))
+          (set! (.-camera sctx) obj))
+        (.push (.-cameras sctx) obj)))
     callbacks))
 
 (defn- on-entity-updated [^Context ctx ^vscene/Node node ^three/Object3D obj component-config]
@@ -69,12 +93,14 @@
                 component-key
                 position
                 rotation
-                scale]} (.-data node)]
+                scale
+                visible]} (.-data node)]
     (if-let [entity-type (get (.-entityTypes ctx) component-key)]
       (let [obj (entity/create entity-type (.-context node) component-config)]
         (threejs/set-position! obj position)
         (threejs/set-rotation! obj rotation)
         (threejs/set-scale! obj scale)
+        (set! (.-visible obj) visible)
         obj)
       (throw (js/Error. (str "Cannot find entity-type for keyword '" (str component-key) "'")
                         node)))))
@@ -99,7 +125,8 @@
      (when-not portal?
        (.add parent obj))
      (set! (.-threejs node) obj)
-     (registries/register-entity! (.-entityRegistry ctx) (.-id node) obj)
+     (let [sctx ^SceneContext (active-scene-ctx ctx)]
+       (registries/register-entity! (.-entityRegistry sctx) (.-id node) obj))
      (let [post-added-fns (on-entity-added ctx node obj component-config)]
        (.for-each-child node (partial create-entity ctx obj))
        (doseq [cb post-added-fns]
@@ -120,7 +147,8 @@
            (cb))
          (when-let [parent (.-parent obj)]
            (.remove parent obj)))
-       (registries/unregister-entity! (.-entityRegistry ctx) (.-id node))
+       (let [sctx ^SceneContext (active-scene-ctx ctx)]
+         (registries/unregister-entity! (.-entityRegistry sctx) (.-id node)))
        (entity/destroy! entity-type (.-context node) obj component-config)))))
 
 (defn- update-entity
@@ -129,13 +157,15 @@
                 component-key
                 position
                 rotation
-                scale]} new-data
+                scale
+                visible]} new-data
         entity-type (get (.-entityTypes ctx) component-key)
         obj  ^three/Object3D (.-threejs node)]
     (entity/update! entity-type (.-context node) obj component-config)
     (threejs/set-position! obj position)
     (threejs/set-rotation! obj rotation)
     (threejs/set-scale! obj scale)
+    (set! (.-visible obj) visible)
     (on-entity-updated ctx node obj component-config)
     obj))
 
@@ -143,11 +173,13 @@
   [^Context _ctx ^vscene/Node node]
   (let [{:keys [position
                 rotation
-                scale]} (.-data node)
+                scale
+                visible]} (.-data node)
         obj ^three/Object3D (.-threejs node)]
     (threejs/set-position! obj position)
     (threejs/set-rotation! obj rotation)
-    (threejs/set-scale! obj scale)))
+    (threejs/set-scale! obj scale)
+    (set! (.-visible obj) visible)))
 
 (defn- replace-entity
   "Destroy and recreate an entity at a given node in the scene-graph"
@@ -167,11 +199,16 @@
       (when-not (.terminal? node)
         (doseq [child (aclone children)]
           (.add new-obj child)))
-      (registries/register-entity! (.-entityRegistry ctx) (.-id node) new-obj)
+      (let [sctx ^SceneContext (active-scene-ctx ctx)]
+        (registries/register-entity! (.-entityRegistry sctx) (.-id node) new-obj))
       (on-entity-added ctx node new-obj (:component-config new-data)))))
 
 (defn- init-scene! [^Context context virtual-scene scene-root]
   (create-entity context scene-root (.-root virtual-scene)))
+
+;; ---------------------------------------------------------------------------
+;; Update dispatch
+;; ---------------------------------------------------------------------------
 
 (defn- update-type [^Context context ^vscene/Node node o n]
   (cond
@@ -215,6 +252,10 @@
                             (js/console.error "Failed to transform entity" ex
                                               (clj->js (.-data node))))))))
 
+;; ---------------------------------------------------------------------------
+;; Frame pacing
+;; ---------------------------------------------------------------------------
+
 (defn- should-process-frame? [^Context context]
   (if-let [frame-interval (.-frameInterval context)]
     (let [now (js/performance.now)
@@ -227,6 +268,117 @@
         false))
     true))
 
+;; ---------------------------------------------------------------------------
+;; Scene normalization helpers
+;; ---------------------------------------------------------------------------
+
+(defn- normalize-scenes
+  "Normalize the root-fn argument into a map of {key -> root-fn}.
+   A single function becomes {:default root-fn}."
+  [root-fn]
+  (if (map? root-fn)
+    root-fn
+    {:default root-fn}))
+
+(defn- create-scene-context
+  "Create a SceneContext for a single scene. virtualScene is set later."
+  [key width height scene-opts]
+  (let [camera (three/PerspectiveCamera. 75 (/ width height) 0.1 1000)
+        cameras (array)
+        scene-root (new three/Scene)]
+    (when-let [bg (:background scene-opts)]
+      (set! (.-background scene-root) (three/Color. bg)))
+    (SceneContext. key nil scene-root camera cameras camera nil)))
+
+(defn- clear-scene-ctx!
+  "Clear all entities from a SceneContext. Sets activeSceneCtx before destroying."
+  [^Context context ^SceneContext sctx]
+  (set! (.-activeSceneCtx context) sctx)
+  (let [vscene-root ^vscene/Node (.-root (.-virtualScene sctx))]
+    (.for-each-child vscene-root (partial destroy-entity context)))
+  (.clear (.-sceneRoot sctx)))
+
+;; ---------------------------------------------------------------------------
+;; RenderPipeline compositing
+;; ---------------------------------------------------------------------------
+
+(defn- rebuild-pipeline!
+  "Create/recreate the RenderPipeline by calling the user's :render-pipeline fn
+   with pass() nodes for each scene."
+  [^Context context]
+  (let [pipeline-fn (.-renderPipelineFn context)
+        renderer (.-renderer context)
+        scenes (.-scenes context)
+        render-order (.-renderOrder context)
+        pass-nodes (reduce (fn [m scene-key]
+                             (let [sctx ^SceneContext (get scenes scene-key)
+                                   pass-node (pass (.-sceneRoot sctx) (.-camera sctx))]
+                               (set! (.-lastPipelineCamera sctx) (.-camera sctx))
+                               (assoc m scene-key pass-node)))
+                           {}
+                           render-order)
+        output-node (pipeline-fn pass-nodes)]
+    (when-let [old-pipeline (.-renderPipeline context)]
+      (.dispose old-pipeline))
+    (let [pipeline (three/RenderPipeline. renderer)]
+      (set! (.-outputNode pipeline) output-node)
+      (set! (.-renderPipeline context) pipeline))))
+
+(defn- render-with-pipeline!
+  "Render using the RenderPipeline. Rebuilds if cameras changed or pipeline is nil."
+  [^Context context delta-time]
+  (let [scenes (.-scenes context)
+        render-order (.-renderOrder context)
+        camera-changed? (some (fn [scene-key]
+                                (let [sctx ^SceneContext (get scenes scene-key)]
+                                  (not (identical? (.-camera sctx)
+                                                   (.-lastPipelineCamera sctx)))))
+                              render-order)]
+    (when (or camera-changed? (nil? (.-renderPipeline context)))
+      (rebuild-pipeline! context))
+    (.render ^js (.-renderPipeline context) delta-time)))
+
+;; ---------------------------------------------------------------------------
+;; Rendering dispatch
+;; ---------------------------------------------------------------------------
+
+(defn- render-scenes!
+  "Render all scenes. Dispatches to RenderPipeline or sequential rendering."
+  [^Context context delta-time]
+  (let [renderer (.-renderer context)
+        scenes (.-scenes context)
+        render-order (.-renderOrder context)]
+    (if (.-renderPipelineFn context)
+      ;; RenderPipeline mode
+      (render-with-pipeline! context delta-time)
+      ;; Sequential rendering mode
+      (if (= 1 (count render-order))
+        ;; Single scene — simple render (backwards compatible path)
+        (let [sctx ^SceneContext (get scenes (first render-order))]
+          (.render renderer (.-sceneRoot sctx) (.-camera sctx)))
+        ;; Multi scene — sequential with depth clearing
+        (let [scene-opts (.-sceneOpts context)]
+          (doseq [[idx scene-key] (map-indexed vector render-order)]
+            (let [sctx ^SceneContext (get scenes scene-key)
+                  sopts (get scene-opts scene-key {})]
+              (if (= 0 idx)
+                (do
+                  (set! (.-autoClear renderer) true)
+                  (.render renderer (.-sceneRoot sctx) (.-camera sctx)))
+                (do
+                  (set! (.-autoClear renderer) false)
+                  (when (get sopts :clear-depth true)
+                    (.clearDepth renderer))
+                  (when (:clear-color sopts)
+                    (.clearColor renderer))
+                  (.render renderer (.-sceneRoot sctx) (.-camera sctx))))))
+          ;; Restore autoClear
+          (set! (.-autoClear renderer) true))))))
+
+;; ---------------------------------------------------------------------------
+;; Animation loop
+;; ---------------------------------------------------------------------------
+
 (defn- animate [^Context context]
   (let [pacer (.-framePacer context)
         now (js/performance.now)]
@@ -234,38 +386,41 @@
             (frame-pacer/should-render? pacer now)
             (should-process-frame? context))
       (let [render-start now
-            stats (.-stats context)
+            stats ^js (.-stats context)
             clock ^three/Clock (.-clock context)
-            virtual-scene ^vscene/Scene (.-virtualScene context)
             renderer (.-renderer context)
-            composer (.-composer context)
-            scene-root (.-sceneRoot context)
             before-render-cb (.-beforeRenderCb context)
-            after-render-cb (.-afterRenderCb context)]
+            after-render-cb (.-afterRenderCb context)
+            scenes (.-scenes context)
+            render-order (.-renderOrder context)]
         (when stats
           (.begin stats))
-        (let [delta-time (.getDelta clock)
-              changelog (array)]
+        (let [delta-time (.getDelta clock)]
           (systems/dispatch-on-tick context delta-time)
-          ;; Invoke callbacks
+          ;; Invoke before-render callback
           (when before-render-cb (before-render-cb delta-time))
-          ;; Render virtual scene
-          (vscene/render! virtual-scene changelog)
-          ;; Apply virtual scene changes to ThreeJs scene
-          (doseq [change changelog]
-            (apply-change! context change))
-          ;; Fetch camera after applying the scene changes since it might have been updated
-          (let [camera (.-camera context)]
-            ;; Render ThreeJS Scene
-            (if composer
-              (.render composer delta-time)
-              (.render renderer scene-root camera)))
+          ;; Process each scene's virtual tree
+          (doseq [scene-key render-order]
+            (let [sctx ^SceneContext (get scenes scene-key)
+                  virtual-scene ^vscene/Scene (.-virtualScene sctx)
+                  changelog (array)]
+              (set! (.-activeSceneCtx context) sctx)
+              (vscene/render! virtual-scene changelog)
+              (doseq [change changelog]
+                (apply-change! context change))))
+          ;; Render all scenes
+          (render-scenes! context delta-time)
+          ;; Invoke after-render callback
           (when after-render-cb (after-render-cb delta-time)))
         (when stats
           (.end stats))
         ;; Record render time for frame pacer
         (when pacer
           (frame-pacer/record-render-time! pacer (- (js/performance.now) render-start)))))))
+
+;; ---------------------------------------------------------------------------
+;; Canvas / renderer helpers
+;; ---------------------------------------------------------------------------
 
 (defn- get-canvas [dom-root]
   (if (= "canvas" (string/lower-case (.-tagName dom-root)))
@@ -280,6 +435,9 @@
       (set! (.-type sm) (or (:type shadow-map)
                             three/PCFShadowMap)))))
 
+;; ---------------------------------------------------------------------------
+;; Context creation
+;; ---------------------------------------------------------------------------
 
 (defn- ^Context create-context [root-fn dom-root {:keys [on-before-render
                                                          on-after-render
@@ -288,74 +446,147 @@
                                                          systems
                                                          entity-types
                                                          target-framerate
-                                                         auto-frame-pacing]}]
+                                                         auto-frame-pacing
+                                                         render-order
+                                                         render-pipeline
+                                                         scenes]}]
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
         renderer (new three/WebGPURenderer (clj->js {:canvas canvas}))
-        camera (three/PerspectiveCamera. 75 (/ width height) 0.1 1000)
-        cameras (array)
-        scene-root (new three/Scene)
         clock (new three/Clock)
         frame-interval (when (and target-framerate (not auto-frame-pacing))
-                         (* 1000.0 (/ 1.0 target-framerate)))]
+                         (* 1000.0 (/ 1.0 target-framerate)))
+        scenes-map (normalize-scenes root-fn)
+        multi-scene? (> (count scenes-map) 1)
+        scene-keys (or render-order (vec (keys scenes-map)))
+        primary-key (first scene-keys)
+        scene-opts (or scenes {})]
     (.setSize renderer width height)
     (set-shadow-map! renderer shadow-map)
-    ;; Systems are initialized before first virtual-render
-    (systems/dispatch-init systems {:threejs-renderer renderer
-                                    :threejs-scene scene-root
-                                    :threejs-default-camera camera
-                                    :entity-registry entity-registry
-                                    :canvas canvas})
-    (let [virtual-scene (vscene/create root-fn)
-          context (Context. virtual-scene
-                                 scene-root
-                                 dom-root frame-interval
-                                 canvas camera cameras
-                                 clock renderer
-                                 on-before-render
-                                 on-after-render
-                                 (merge builtin-entity-types entity-types)
-                                 systems
-                                 camera
-                                 entity-registry)]
+    ;; Create SceneContexts
+    (let [scene-ctxs (reduce (fn [m k]
+                               (let [sctx (create-scene-context k width height (get scene-opts k))]
+                                 (set! (.-entityRegistry sctx)
+                                       (or entity-registry (atom {})))
+                                 (assoc m k sctx)))
+                             {}
+                             scene-keys)
+          primary-sctx ^SceneContext (get scene-ctxs primary-key)
+          context (Context. dom-root frame-interval
+                            canvas clock renderer
+                            on-before-render
+                            on-after-render
+                            (merge builtin-entity-types entity-types)
+                            systems
+                            scene-ctxs
+                            scene-keys
+                            nil
+                            primary-key)]
+      ;; Store per-scene opts and render-pipeline fn
+      (set! (.-sceneOpts context) scene-opts)
+      (when render-pipeline
+        (set! (.-renderPipelineFn context) render-pipeline))
+      ;; Systems are initialized before first virtual-render
+      (systems/dispatch-init systems
+                             {:threejs-renderer renderer
+                              :threejs-scene (.-sceneRoot primary-sctx)
+                              :threejs-default-camera (.-defaultCamera primary-sctx)
+                              :entity-registry (.-entityRegistry primary-sctx)
+                              :canvas canvas
+                              :threejs-scenes (reduce-kv (fn [m k ^SceneContext sctx]
+                                                           (assoc m k (.-sceneRoot sctx)))
+                                                         {} scene-ctxs)})
+      ;; Create virtual scenes and init each scene
+      (doseq [k scene-keys]
+        (let [sctx ^SceneContext (get scene-ctxs k)
+              root-fn-for-scene (get scenes-map k)
+              initial-ctx (if multi-scene?
+                            {:threeagent/scene-key k}
+                            {})
+              virtual-scene (vscene/create root-fn-for-scene initial-ctx)]
+          (set! (.-virtualScene sctx) virtual-scene)
+          (set! (.-activeSceneCtx context) sctx)
+          (init-scene! context virtual-scene (.-sceneRoot sctx))))
+      ;; Frame pacing
       (when auto-frame-pacing
         (set! (.-framePacer context) (frame-pacer/create target-framerate nil)))
       (when frame-interval
         (set! (.-lastFrameTime context) (js/performance.now)))
-      (init-scene! context virtual-scene scene-root)
       (.push contexts context)
       (.setAnimationLoop renderer #(animate context))
       context)))
 
-(defn- clear-scene! [^Context context ^vscene/Node vscene-root]
-  (.for-each-child vscene-root (partial destroy-entity context))
-  (.clear (.-sceneRoot context)))
+;; ---------------------------------------------------------------------------
+;; Context reset (hot reload)
+;; ---------------------------------------------------------------------------
 
 (defn- reset-context! [^Context old-context root-fn {:keys [on-before-render on-after-render shadow-map
                                                             entity-types systems entity-registry
-                                                            target-framerate auto-frame-pacing]}]
-  (let [scene-root        ^js (.-sceneRoot old-context)
-        virtual-scene     ^vscene/Scene (.-virtualScene old-context)
-        renderer          ^js (.-renderer old-context)]
+                                                            target-framerate auto-frame-pacing
+                                                            render-order render-pipeline scenes]}]
+  (let [renderer ^js (.-renderer old-context)
+        old-scenes (.-scenes old-context)]
+    ;; Dispatch destroy for systems
     (systems/dispatch-destroy (.-systems old-context)
                               (raw-context->context old-context))
-    (clear-scene! old-context (.-root virtual-scene))
-    (vscene/destroy! virtual-scene)
-    (set-shadow-map! renderer shadow-map)
-    (set! (.-cameras old-context) (array))
-    (set! (.-systems old-context) systems)
-    (set! (.-entityTypes old-context) (merge builtin-entity-types entity-types))
-    (set! (.-entityRegistry old-context) entity-registry)
-    (registries/reset-registry! (.-entityRegistry old-context))
-    (systems/dispatch-init systems {:threejs-renderer renderer
-                                    :threejs-scene scene-root
-                                    :threejs-default-camera (.-defaultCamera old-context)
-                                    :entity-registry entity-registry
-                                    :canvas (.-canvas old-context)})
-    (let [new-virtual-scene (vscene/create root-fn)]
-      (init-scene! old-context new-virtual-scene scene-root)
-      (set! (.-virtualScene old-context) new-virtual-scene)
+    ;; Clear and destroy all existing scenes
+    (doseq [[_ sctx] old-scenes]
+      (clear-scene-ctx! old-context sctx)
+      (vscene/destroy! (.-virtualScene ^SceneContext sctx)))
+    ;; Dispose old RenderPipeline
+    (when-let [pipeline (.-renderPipeline old-context)]
+      (.dispose pipeline)
+      (set! (.-renderPipeline old-context) nil))
+    ;; Set up new scenes
+    (let [scenes-map (normalize-scenes root-fn)
+          multi-scene? (> (count scenes-map) 1)
+          scene-keys (or render-order (vec (keys scenes-map)))
+          primary-key (first scene-keys)
+          scene-opts (or scenes {})
+          width (.-offsetWidth (.-canvas old-context))
+          height (.-offsetHeight (.-canvas old-context))]
+      (set-shadow-map! renderer shadow-map)
+      (set! (.-systems old-context) systems)
+      (set! (.-entityTypes old-context) (merge builtin-entity-types entity-types))
+      (set! (.-renderOrder old-context) scene-keys)
+      (set! (.-primarySceneKey old-context) primary-key)
+      (set! (.-sceneOpts old-context) scene-opts)
+      (set! (.-renderPipelineFn old-context) render-pipeline)
+      ;; Create new SceneContexts
+      (let [scene-ctxs (reduce (fn [m k]
+                                 (let [sctx (create-scene-context k width height (get scene-opts k))]
+                                   (set! (.-entityRegistry sctx)
+                                         (or entity-registry (atom {})))
+                                   (when entity-registry
+                                     (registries/reset-registry! entity-registry))
+                                   (assoc m k sctx)))
+                               {}
+                               scene-keys)
+            primary-sctx ^SceneContext (get scene-ctxs primary-key)]
+        (set! (.-scenes old-context) scene-ctxs)
+        ;; Systems init
+        (systems/dispatch-init systems
+                               {:threejs-renderer renderer
+                                :threejs-scene (.-sceneRoot primary-sctx)
+                                :threejs-default-camera (.-defaultCamera primary-sctx)
+                                :entity-registry (.-entityRegistry primary-sctx)
+                                :canvas (.-canvas old-context)
+                                :threejs-scenes (reduce-kv (fn [m k ^SceneContext sctx]
+                                                             (assoc m k (.-sceneRoot sctx)))
+                                                           {} scene-ctxs)})
+        ;; Create virtual scenes and init each scene
+        (doseq [k scene-keys]
+          (let [sctx ^SceneContext (get scene-ctxs k)
+                root-fn-for-scene (get scenes-map k)
+                initial-ctx (if multi-scene?
+                              {:threeagent/scene-key k}
+                              {})
+                virtual-scene (vscene/create root-fn-for-scene initial-ctx)]
+            (set! (.-virtualScene sctx) virtual-scene)
+            (set! (.-activeSceneCtx old-context) sctx)
+            (init-scene! old-context virtual-scene (.-sceneRoot sctx)))))
+      ;; Callbacks and frame pacing
       (set! (.-beforeRenderCb old-context) on-before-render)
       (set! (.-afterRenderCb old-context) on-after-render)
       (if auto-frame-pacing
@@ -372,6 +603,10 @@
             (when frame-interval
               (set! (.-lastFrameTime old-context) (js/performance.now))))))
       old-context)))
+
+;; ---------------------------------------------------------------------------
+;; Public API
+;; ---------------------------------------------------------------------------
 
 (defn- find-context [dom-root]
   (first (filter #(= (.-domRoot ^js %) dom-root) contexts)))

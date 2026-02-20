@@ -13,12 +13,18 @@ The `threeagent.core/render` function returns a context map containing the core 
 ```clojure
 (let [ctx (th/render root-fn (.getElementById js/document "root"))]
   (:threejs-renderer ctx)        ; WebGPURenderer instance
-  (:threejs-scene ctx)           ; Scene instance
-  (:threejs-default-camera ctx)  ; Default PerspectiveCamera
-  (:canvas ctx))                 ; Canvas element
+  (:threejs-scene ctx)           ; Scene instance (primary scene)
+  (:threejs-default-camera ctx)  ; Default PerspectiveCamera (primary scene)
+  (:canvas ctx)                  ; Canvas element
+  (:threejs-scenes ctx)          ; Map of {scene-key -> Scene} for all scenes
+  (:scene-cameras ctx)           ; Map of {scene-key -> Camera} for all scenes
+  (:threejs-render-pipeline ctx) ; RenderPipeline instance (if :render-pipeline provided)
+  (:frame-pacer ctx))            ; Frame pacer (if :auto-frame-pacing enabled)
 ```
 
 The renderer is a `WebGPURenderer` from `three/webgpu`, which automatically falls back to WebGL 2 on browsers without WebGPU support.
+
+When using [multi-scene rendering](./multi_scene.md), `:threejs-scene` and `:threejs-default-camera` refer to the primary scene (the first in `:render-order`). Use `:threejs-scenes` and `:scene-cameras` to access individual scenes by key.
 
 ## Lifecycle Hooks
 

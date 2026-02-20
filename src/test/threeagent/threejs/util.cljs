@@ -28,6 +28,6 @@
   (if (seq path)
     (let [next (first path)]
       (if (string? next)
-        (recur (.getObjectByName parent next) (rest path))
+        (recur (.getObjectByName ^js parent next) (rest path))
         (recur (aget (.-children parent) next) (rest path))))
     parent))

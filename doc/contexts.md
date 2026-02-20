@@ -30,3 +30,16 @@ our game has multiple rooms, we might want a separate atom to track room-specifi
 
 With this setup, our custom `ISystem` and `IEntityType` can use the provided context map to access
 the `:room-state` atom without additional logic to isolate state between rooms.
+
+## Scene Key Context
+
+When using [multi-scene rendering](./multi_scene.md), Threeagent automatically injects a `:threeagent/scene-key` into each scene's context. This key identifies which scene an entity belongs to and is available in all `ISystem` and `IEntityType` callbacks:
+
+```clojure
+(on-entity-added [_ ctx entity-id obj config]
+  (case (:threeagent/scene-key ctx)
+    :world (println "Entity added to world scene")
+    :ui    (println "Entity added to UI scene")))
+```
+
+This context key is not present in single-scene mode, preserving backwards compatibility.
