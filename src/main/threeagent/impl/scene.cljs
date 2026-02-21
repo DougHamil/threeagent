@@ -473,22 +473,25 @@
                              {}
                              scene-keys)
           primary-sctx ^SceneContext (get scene-ctxs primary-key)
+          [normalized-systems sorted-sys-keys] (systems/normalize-systems systems)
           context (Context. dom-root frame-interval
                             canvas clock renderer
                             on-before-render
                             on-after-render
                             (merge builtin-entity-types entity-types)
-                            systems
+                            normalized-systems
                             scene-ctxs
                             scene-keys
                             nil
                             primary-key)]
-      ;; Store per-scene opts and render-pipeline fn
+      ;; Store sorted system keys, per-scene opts, and render-pipeline fn
+      (set! (.-systemKeys context) sorted-sys-keys)
       (set! (.-sceneOpts context) scene-opts)
       (when render-pipeline
         (set! (.-renderPipelineFn context) render-pipeline))
       ;; Systems are initialized before first virtual-render
-      (systems/dispatch-init systems
+      (systems/dispatch-init normalized-systems
+                             sorted-sys-keys
                              {:threejs-renderer renderer
                               :threejs-scene (.-sceneRoot primary-sctx)
                               :threejs-default-camera (.-defaultCamera primary-sctx)
@@ -529,6 +532,7 @@
         old-scenes (.-scenes old-context)]
     ;; Dispatch destroy for systems
     (systems/dispatch-destroy (.-systems old-context)
+                              (.-systemKeys old-context)
                               (raw-context->context old-context))
     ;; Clear and destroy all existing scenes
     (doseq [[_ sctx] old-scenes]
@@ -547,34 +551,37 @@
           width (.-offsetWidth (.-canvas old-context))
           height (.-offsetHeight (.-canvas old-context))]
       (set-shadow-map! renderer shadow-map)
-      (set! (.-systems old-context) systems)
-      (set! (.-entityTypes old-context) (merge builtin-entity-types entity-types))
-      (set! (.-renderOrder old-context) scene-keys)
-      (set! (.-primarySceneKey old-context) primary-key)
-      (set! (.-sceneOpts old-context) scene-opts)
-      (set! (.-renderPipelineFn old-context) render-pipeline)
-      ;; Create new SceneContexts
-      (let [scene-ctxs (reduce (fn [m k]
-                                 (let [sctx (create-scene-context k width height (get scene-opts k))]
-                                   (set! (.-entityRegistry sctx)
-                                         (or entity-registry (atom {})))
-                                   (when entity-registry
-                                     (registries/reset-registry! entity-registry))
-                                   (assoc m k sctx)))
-                               {}
-                               scene-keys)
-            primary-sctx ^SceneContext (get scene-ctxs primary-key)]
-        (set! (.-scenes old-context) scene-ctxs)
-        ;; Systems init
-        (systems/dispatch-init systems
-                               {:threejs-renderer renderer
-                                :threejs-scene (.-sceneRoot primary-sctx)
-                                :threejs-default-camera (.-defaultCamera primary-sctx)
-                                :entity-registry (.-entityRegistry primary-sctx)
-                                :canvas (.-canvas old-context)
-                                :threejs-scenes (reduce-kv (fn [m k ^SceneContext sctx]
-                                                             (assoc m k (.-sceneRoot sctx)))
-                                                           {} scene-ctxs)})
+      (let [[normalized-systems sorted-sys-keys] (systems/normalize-systems systems)]
+        (set! (.-systems old-context) normalized-systems)
+        (set! (.-systemKeys old-context) sorted-sys-keys)
+        (set! (.-entityTypes old-context) (merge builtin-entity-types entity-types))
+        (set! (.-renderOrder old-context) scene-keys)
+        (set! (.-primarySceneKey old-context) primary-key)
+        (set! (.-sceneOpts old-context) scene-opts)
+        (set! (.-renderPipelineFn old-context) render-pipeline)
+        ;; Create new SceneContexts
+        (let [scene-ctxs (reduce (fn [m k]
+                                   (let [sctx (create-scene-context k width height (get scene-opts k))]
+                                     (set! (.-entityRegistry sctx)
+                                           (or entity-registry (atom {})))
+                                     (when entity-registry
+                                       (registries/reset-registry! entity-registry))
+                                     (assoc m k sctx)))
+                                 {}
+                                 scene-keys)
+              primary-sctx ^SceneContext (get scene-ctxs primary-key)]
+          (set! (.-scenes old-context) scene-ctxs)
+          ;; Systems init
+          (systems/dispatch-init normalized-systems
+                                 sorted-sys-keys
+                                 {:threejs-renderer renderer
+                                  :threejs-scene (.-sceneRoot primary-sctx)
+                                  :threejs-default-camera (.-defaultCamera primary-sctx)
+                                  :entity-registry (.-entityRegistry primary-sctx)
+                                  :canvas (.-canvas old-context)
+                                  :threejs-scenes (reduce-kv (fn [m k ^SceneContext sctx]
+                                                               (assoc m k (.-sceneRoot sctx)))
+                                                             {} scene-ctxs)})
         ;; Create virtual scenes and init each scene
         (doseq [k scene-keys]
           (let [sctx ^SceneContext (get scene-ctxs k)
@@ -602,7 +609,7 @@
             (set! (.-frameInterval old-context) frame-interval)
             (when frame-interval
               (set! (.-lastFrameTime old-context) (js/performance.now))))))
-      old-context)))
+      old-context))))
 
 ;; ---------------------------------------------------------------------------
 ;; Public API

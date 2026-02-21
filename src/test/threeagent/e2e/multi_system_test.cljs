@@ -39,8 +39,8 @@
     (let [sys-state (atom #{})
           init-state (atom [])
           state (th/atom true)
-          systems {:use-state (->UseStateSystem init-state)
-                   :attach-state (->AttachStateSystem init-state sys-state)}
+          systems {:use-state {:system (->UseStateSystem init-state) :order 10}
+                   :attach-state {:system (->AttachStateSystem init-state sys-state) :order 0}}
           root-fn (fn []
                     [:object
                      (when @state
@@ -55,4 +55,47 @@
                                     (reset! state false))
                             :then (fn []
                                     (is (= #{} @sys-state)))}]))))
+
+(defrecord OrderedSystem [label log]
+  ISystem
+  (init [_ _ctx])
+  (destroy [_ _ctx])
+  (on-entity-added [_ _ _id _obj _config]
+    (swap! log conj [:add label]))
+  (on-entity-updated [_ _ _id _obj _config])
+  (on-entity-removed [_ _ _id _obj _config]
+    (swap! log conj [:remove label]))
+  (tick [_ _]))
+
+(deftest system-order-by-order-key-test
+  (testing "systems with explicit :order dispatch in order (lower first)"
+    (let [log (atom [])
+          state (th/atom true)
+          systems {:sys-b {:system (->OrderedSystem :b log) :order 10}
+                   :sys-a {:system (->OrderedSystem :a log) :order 0}}
+          root-fn (fn []
+                    [:object
+                     (when @state
+                       [:object {:sys-a {} :sys-b {}}])])]
+      (fixture/async-run! [{:when (fn []
+                                    (th/render root-fn @canvas {:systems systems}))
+                            :then (fn []
+                                    (is (= [[:add :a] [:add :b]] @log)))}
+                           {:when (fn []
+                                    (reset! log [])
+                                    (reset! state false))
+                            :then (fn []
+                                    (is (= [[:remove :a] [:remove :b]] @log)))}]))))
+
+(deftest bare-system-backwards-compat-test
+  (testing "bare ISystem values still work (default :order 0)"
+    (let [log (atom [])
+          systems {:sys-a (->OrderedSystem :a log)}
+          root-fn (fn []
+                    [:object
+                     [:object {:sys-a {}}]])]
+      (fixture/async-run! [{:when (fn []
+                                    (th/render root-fn @canvas {:systems systems}))
+                            :then (fn []
+                                    (is (= [[:add :a]] @log)))}]))))
 

@@ -121,9 +121,18 @@ changes without the entity being fully removed and re-added. The method receives
 use this to clean up any state associated with this particular entity.
 6. The `tick` method is called every frame with the time (in seconds) since the last frame was rendered. This can be used by systems that need to run some logic every frame, such as a physics system.
 
-> NOTE: Threeagent does not support the ordering of `ISystem` invocations. Meaning, we cannot control which
-> system will have its `on-entity-added` method called before another, in the case where an entity has
-> multiple system components defined.
+By default, systems are dispatched in an unspecified order. To control which system runs first, wrap the system
+instance in a config map with an `:order` key (lower values run first, default is `0`):
+
+```clojure
+(th/render
+  root-fn
+  canvas
+  {:systems {:attach-state {:system (->AttachStateSystem) :order 0}
+             :use-state    {:system (->UseStateSystem)    :order 10}}})
+```
+
+Bare `ISystem` values (without `:order`) are still supported and default to `:order 0`.
 
 
 With our `InputSystem` defined, we need to provide an instance of it to Threeagent. Similar to the entity-types, we do this by setting the `:systems` property to a map of keyword to system instance:
