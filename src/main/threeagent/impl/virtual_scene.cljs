@@ -39,7 +39,7 @@
     (doseq [child (es6-iterator-seq (.values children))]
       (f child))))
 
-(deftype Scene [root renderQueue]
+(deftype Scene [root renderQueue initialContext]
   Object
   (enqueueForRender [_ ^Node node ^js render-fn ^js force-replace?]
     (set! (.-dirty node) true)
@@ -61,12 +61,13 @@
   {:position (:position comp-config [0 0 0])
    :rotation (:rotation comp-config [0 0 0])
    :scale (:scale comp-config [1.0 1.0 1.0])
+   :visible (:visible comp-config true)
    :cast-shadow (:cast-shadow comp-config false)
    :receive-shadow (:receive-shadow comp-config false)
    :id (:id comp-config)
    :component-key comp-key
    :component-config (let [c (transient comp-config)]
-                       (persistent! (dissoc! c :position :rotation :scale)))}) ;(apply dissoc comp-config non-component-keys)})
+                       (persistent! (dissoc! c :position :rotation :scale :visible)))}) ;(apply dissoc comp-config non-component-keys)})
 
 (defmulti ->node (fn [^Scene _scene _context ^Node _parent _key form]
                    (let [l (first form)]
@@ -248,12 +249,15 @@
 
 (defn- replace-node! [^Scene scene ^Node node new-form changelog]
   (let [parent (.-parent node)
-        context (if parent (.-context parent)
-                    {})
+        context (if parent
+                  (.-context parent)
+                  (or (.-initialContext scene) {}))
         key (.-key node)]
     (remove-node! node changelog)
     (let [new-node (add-node! scene context parent key new-form changelog)]
-      (.set (.-children parent) key new-node))))
+      (if parent
+        (.set (.-children parent) key new-node)
+        (set! (.-root scene) new-node)))))
 
 (defn- diff-fn? [^Node node new-form]
   (let [original-fn (.-originalFn node)]
@@ -285,7 +289,7 @@
           old-portal-path (.-portalPath node)
           parent-context (if parent
                            (.-context parent)
-                           {})
+                           (or (.-initialContext scene) {}))
 
           rendered-form (if render-fn
                           (apply render-fn (rest new-form))
@@ -350,8 +354,10 @@
 (defn destroy! [^Scene scene]
   (dispose-node! (.-root scene)))
 
-(defn create [root-fn]
-  (let [scene (Scene. nil (PriorityQueue.))
-        root-node (->node scene {} nil 0 [root-fn])]
-    (set! (.-root scene) root-node)
-    scene))
+(defn create
+  ([root-fn] (create root-fn {}))
+  ([root-fn initial-context]
+   (let [scene (Scene. nil (PriorityQueue.) initial-context)
+         root-node (->node scene initial-context nil 0 [root-fn])]
+     (set! (.-root scene) root-node)
+     scene)))

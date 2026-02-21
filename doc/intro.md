@@ -9,6 +9,7 @@ Threeagent uses Three.js's `WebGPURenderer`, which automatically falls back to W
 * Familiar [hiccup](https://github.com/weavejester/hiccup)-like syntax
 * Reactive-atoms for state management
 * Auto-reconciliation of the Three.js scene-graph
+* [Multi-scene rendering](./multi_scene.md) with RenderPipeline compositing
 * Escape-hatches for accessing Three.js objects
 * Extendable with custom [systems](/doc/systems.md) and [entity-types](/doc/entity_type.md)
 

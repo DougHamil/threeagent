@@ -2,7 +2,9 @@
 [![CircleCI](https://circleci.com/gh/DougHamil/threeagent/tree/main.svg?style=svg)](https://circleci.com/gh/DougHamil/threeagent/tree/main)
 [![cljdoc badge](https://cljdoc.org/badge/doughamil/threeagent)](https://cljdoc.org/d/doughamil/threeagent)
 
-ClojureScript library for building Three.js apps in a reagent-like fashion
+ClojureScript library for building Three.js apps in a reagent-like fashion.
+
+Supports multi-scene rendering, RenderPipeline compositing (WebGPU), and reactive state management.
 
 ## Installation
 [![Clojars Project](https://clojars.org/doughamil/threeagent/latest-version.svg)](https://clojars.org/doughamil/threeagent)
