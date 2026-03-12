@@ -218,12 +218,17 @@
    :shape (->MeshEntity (fn [{:keys [shape]}]
                           (three/ShapeGeometry. shape)))
    ;; Lights
+   ;; Note: update functions destructure only known props to avoid setting
+   ;; non-light keys (e.g. :ref, :id) as JS properties. Color must use
+   ;; .setHex on the existing Color object — raw assignment overwrites it
+   ;; with a number, breaking WebGPU shader reads of .r/.g/.b.
    :ambient-light (->LightEntity
                    (fn [{:keys [intensity color]}]
                      (three/AmbientLight. (or color 0xFFFFFF)
                                           (or intensity 1.0)))
-                   (fn [^three/Light o cfg]
-                     (apply-props-clj! o cfg)
+                   (fn [^three/Light o {:keys [color intensity]}]
+                     (when color (.setHex (.-color o) color))
+                     (when (some? intensity) (set! (.-intensity o) intensity))
                      o))
    :point-light (->LightEntity
                  (fn [{:keys [intensity color distance decay]}]
@@ -231,8 +236,11 @@
                                       (or intensity 1.0)
                                       (or distance 0)
                                       (or decay 1.0)))
-                 (fn [^three/Light o cfg]
-                   (apply-props-clj! o cfg)
+                 (fn [^three/Light o {:keys [color intensity distance decay]}]
+                   (when color (.setHex (.-color o) color))
+                   (when (some? intensity) (set! (.-intensity o) intensity))
+                   (when (some? distance) (set! (.-distance o) distance))
+                   (when (some? decay) (set! (.-decay o) decay))
                    o))
    :hemisphere-light (->LightEntity
                       (fn [{:keys [sky-color ground-color intensity]}]
@@ -240,9 +248,10 @@
                          (or sky-color 0xFFFFFF)
                          (or ground-color 0xFFFFFF)
                          (or intensity 1)))
-                      (fn [^three/Light o cfg]
-                        (apply-props-clj! o (rename-keys cfg {:sky-color :skyColor
-                                                              :ground-color :groundColor}))
+                      (fn [^three/Light o {:keys [sky-color ground-color intensity]}]
+                        (when sky-color (.setHex (.-color o) sky-color))
+                        (when ground-color (.setHex (.-groundColor o) ground-color))
+                        (when (some? intensity) (set! (.-intensity o) intensity))
                         o))
    :directional-light (->LightEntity
                        (fn [{:keys [intensity color target]}]
@@ -252,11 +261,12 @@
                            (when target
                              (set! (.-target light) target))
                            light))
-                       (fn [^three/Light o {:keys [target] :as cfg}]
+                       (fn [^three/Light o {:keys [target color intensity]}]
                          (if target
                            (set! (.-target o) target)
                            (set! (.-target o) (.-originalTarget o)))
-                         (apply-props-clj! o (dissoc cfg :target))
+                         (when color (.setHex (.-color o) color))
+                         (when (some? intensity) (set! (.-intensity o) intensity))
                          o))
    :rect-area-light (->LightEntity
                      (fn [{:keys [intensity color width height]}]
@@ -264,8 +274,11 @@
                                              (or intensity 1.0)
                                              (or width 10)
                                              (or height 10)))
-                     (fn [^three/Light o cfg]
-                       (apply-props-clj! o cfg)
+                     (fn [^three/Light o {:keys [color intensity width height]}]
+                       (when color (.setHex (.-color o) color))
+                       (when (some? intensity) (set! (.-intensity o) intensity))
+                       (when (some? width) (set! (.-width o) width))
+                       (when (some? height) (set! (.-height o) height))
                        o))
    :spot-light (->LightEntity
                 (fn [{:keys [intensity color distance angle penumbra decay target]}]
@@ -279,11 +292,16 @@
                     (when target
                       (set! (.-target light) target))
                     light))
-                (fn [^three/Light o {:keys [target] :as cfg}]
+                (fn [^three/Light o {:keys [target color intensity distance angle penumbra decay]}]
                   (if target
                     (set! (.-target o) target)
                     (set! (.-target o) (.-originalTarget o)))
-                  (apply-props-clj! o (dissoc cfg :target))
+                  (when color (.setHex (.-color o) color))
+                  (when (some? intensity) (set! (.-intensity o) intensity))
+                  (when (some? distance) (set! (.-distance o) distance))
+                  (when (some? angle) (set! (.-angle o) angle))
+                  (when (some? penumbra) (set! (.-penumbra o) penumbra))
+                  (when (some? decay) (set! (.-decay o) decay))
                   o))})
                                         
                                   
