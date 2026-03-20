@@ -212,7 +212,12 @@
     :data {}
     :portal-path path
     :form form
-    :children-keys (map-indexed #(vector (or (:key (meta %2)) %1) %2)
+    :children-keys (map-indexed (fn [idx child]
+                                  (let [k (or (:key (meta child))
+                                              (when (and (sequential? child) (map? (second child)))
+                                                (:key (second child)))
+                                              idx)]
+                                    [k child]))
                                 children)}))
   
 
@@ -227,7 +232,14 @@
      :context context
      :data (node-data comp-key comp-config)
      :form form
-     :children-keys (map-indexed #(vector (or (:key (meta %2)) %1) %2)
+     :children-keys (map-indexed (fn [idx child]
+                                   (let [config-key (when (and (sequential? child) (map? (second child)))
+                                                      (:key (second child)))
+                                         k (or (:key (meta child))
+                                               (when (or (string? config-key) (number? config-key))
+                                                 config-key)
+                                               idx)]
+                                     [k child]))
                                  children)}))
 
 (defn- dispose-node! [^Node node]
