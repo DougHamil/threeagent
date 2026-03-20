@@ -227,7 +227,7 @@
                      (three/AmbientLight. (or color 0xFFFFFF)
                                           (or intensity 1.0)))
                    (fn [^three/Light o {:keys [color intensity]}]
-                     (when color (.setHex (.-color o) color))
+                     (when color (.setHex ^js (.-color o) color))
                      (when (some? intensity) (set! (.-intensity o) intensity))
                      o))
    :point-light (->LightEntity
@@ -237,7 +237,7 @@
                                       (or distance 0)
                                       (or decay 1.0)))
                  (fn [^three/Light o {:keys [color intensity distance decay]}]
-                   (when color (.setHex (.-color o) color))
+                   (when color (.setHex ^js (.-color o) color))
                    (when (some? intensity) (set! (.-intensity o) intensity))
                    (when (some? distance) (set! (.-distance o) distance))
                    (when (some? decay) (set! (.-decay o) decay))
@@ -249,8 +249,8 @@
                          (or ground-color 0xFFFFFF)
                          (or intensity 1)))
                       (fn [^three/Light o {:keys [sky-color ground-color intensity]}]
-                        (when sky-color (.setHex (.-color o) sky-color))
-                        (when ground-color (.setHex (.-groundColor o) ground-color))
+                        (when sky-color (.setHex ^js (.-color o) sky-color))
+                        (when ground-color (.setHex ^js (.-groundColor o) ground-color))
                         (when (some? intensity) (set! (.-intensity o) intensity))
                         o))
    :directional-light (->LightEntity
@@ -264,8 +264,8 @@
                        (fn [^three/Light o {:keys [target color intensity]}]
                          (if target
                            (set! (.-target o) target)
-                           (set! (.-target o) (.-originalTarget o)))
-                         (when color (.setHex (.-color o) color))
+                           (set! (.-target o) (.-originalTarget ^js o)))
+                         (when color (.setHex ^js (.-color o) color))
                          (when (some? intensity) (set! (.-intensity o) intensity))
                          o))
    :rect-area-light (->LightEntity
@@ -275,7 +275,7 @@
                                              (or width 10)
                                              (or height 10)))
                      (fn [^three/Light o {:keys [color intensity width height]}]
-                       (when color (.setHex (.-color o) color))
+                       (when color (.setHex ^js (.-color o) color))
                        (when (some? intensity) (set! (.-intensity o) intensity))
                        (when (some? width) (set! (.-width o) width))
                        (when (some? height) (set! (.-height o) height))
@@ -295,8 +295,8 @@
                 (fn [^three/Light o {:keys [target color intensity distance angle penumbra decay]}]
                   (if target
                     (set! (.-target o) target)
-                    (set! (.-target o) (.-originalTarget o)))
-                  (when color (.setHex (.-color o) color))
+                    (set! (.-target o) (.-originalTarget ^js o)))
+                  (when color (.setHex ^js (.-color o) color))
                   (when (some? intensity) (set! (.-intensity o) intensity))
                   (when (some? distance) (set! (.-distance o) distance))
                   (when (some? angle) (set! (.-angle o) angle))

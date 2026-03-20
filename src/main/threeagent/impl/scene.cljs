@@ -174,7 +174,9 @@
   (let [{:keys [position
                 rotation
                 scale
-                visible]} (.-data node)
+                visible
+                component-key
+                id]} (.-data node)
         obj ^three/Object3D (.-threejs node)]
     (threejs/set-position! obj position)
     (threejs/set-rotation! obj rotation)

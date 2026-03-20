@@ -4,7 +4,7 @@
 
 
 (defn mesh-phong-material [c]
-  (new three/MeshPhongMaterial (clj->js c)))
+  (new three/MeshPhongNodeMaterial (clj->js c)))
 
 (def ^:private scratch-euler (three/Euler.))
 
