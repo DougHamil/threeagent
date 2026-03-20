@@ -52,10 +52,10 @@
 
 (defn get-in-scene [^Scene scene path] (get-in-node (.-root scene) (rest path)))
 
-(defn- on-react! [render-fn ctx]
-  (let [node ^Node (.-node ctx)
-        scene ^Scene (.-scene ctx)]
-    (.enqueueForRender scene node render-fn ^js (.-forceReplace ctx))))
+(defn- on-react! [render-fn ^js ctx]
+  (let [node (.-node ctx)
+        scene (.-scene ctx)]
+    (.enqueueForRender scene node render-fn (.-forceReplace ctx))))
 
 (defn- node-data [comp-key comp-config]
   {:position (:position comp-config [0 0 0])
@@ -138,8 +138,8 @@
   (let [key (or (:key (meta form)) key)
         [f & args] form
         original-meta (meta form)
-        outer-reaction-ctx #js {:scene nil, :node nil, :reaction nil, :forceReplace false}
-        inner-reaction-ctx #js {:scene nil, :node nil, :reaction nil}
+        ^js outer-reaction-ctx #js {:scene nil, :node nil, :reaction nil, :forceReplace false}
+        ^js inner-reaction-ctx #js {:scene nil, :node nil, :reaction nil}
         outer-render-fn (fn->render-fn original-meta f)
         outer-result (ratom/run-in-reaction #(apply f args)
                                             outer-reaction-ctx
