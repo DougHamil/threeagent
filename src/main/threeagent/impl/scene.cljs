@@ -237,22 +237,23 @@
     (destroy-entity context node)
 
     :update
-    (case (update-type context node old-data new-data)
-      :replace-entity (try
-                        (replace-entity context node old-data new-data)
-                        (catch :default ex
-                          (js/console.error "Failed to replace entity" ex
-                                            (clj->js (.-data node)))))
-      :update-entity (try
-                       (update-entity context node old-data new-data)
-                       (catch :default ex
-                         (js/console.error "Failed to update entity" ex
-                                           (clj->js (.-data node)))))
-      :transform-entity (try
-                          (transform-entity context node)
+    (when-not (portal? node)
+      (case (update-type context node old-data new-data)
+        :replace-entity (try
+                          (replace-entity context node old-data new-data)
                           (catch :default ex
-                            (js/console.error "Failed to transform entity" ex
-                                              (clj->js (.-data node))))))))
+                            (js/console.error "Failed to replace entity" ex
+                                              (clj->js (.-data node)))))
+        :update-entity (try
+                         (update-entity context node old-data new-data)
+                         (catch :default ex
+                           (js/console.error "Failed to update entity" ex
+                                             (clj->js (.-data node)))))
+        :transform-entity (try
+                            (transform-entity context node)
+                            (catch :default ex
+                              (js/console.error "Failed to transform entity" ex
+                                                (clj->js (.-data node)))))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Frame pacing
