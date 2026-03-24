@@ -1,6 +1,7 @@
 # threeagent
 [![CircleCI](https://circleci.com/gh/DougHamil/threeagent/tree/main.svg?style=svg)](https://circleci.com/gh/DougHamil/threeagent/tree/main)
 [![cljdoc badge](https://cljdoc.org/badge/doughamil/threeagent)](https://cljdoc.org/d/doughamil/threeagent)
+[![Hypercommit](https://img.shields.io/badge/Hypercommit-DB2475)](https://hypercommit.com/threeagent)
 
 ClojureScript library for building Three.js apps in a reagent-like fashion.
 
