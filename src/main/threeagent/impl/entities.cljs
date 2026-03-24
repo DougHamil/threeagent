@@ -87,9 +87,15 @@
     (set! (.-receiveShadow obj) (:receive-shadow cfg))
     (apply-shadow-settings! obj (:shadow cfg))))
 
+(def ^:private internal-keys
+  #{:id :ref :on-added :on-removed :on-updated
+    :position :rotation :scale :visible
+    :cast-shadow :receive-shadow :shadow})
+
 (defn- apply-props-clj! [^js obj properties]
   (doseq [[k v] properties]
-    (gobject/set obj (name k) v))
+    (when-not (internal-keys k)
+      (gobject/set obj (name k) v)))
   obj)
 
 (def builtin-entity-types
