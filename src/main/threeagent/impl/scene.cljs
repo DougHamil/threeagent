@@ -399,8 +399,7 @@
         (when stats
           (.begin stats))
         (let [delta-time (.getDelta clock)]
-          (systems/dispatch-on-tick context delta-time)
-          ;; Invoke before-render callback
+          ;; Invoke before-render callback (game tick, physics)
           (when before-render-cb (before-render-cb delta-time))
           ;; Process each scene's virtual tree
           (doseq [scene-key render-order]
@@ -411,6 +410,9 @@
               (vscene/render! virtual-scene changelog)
               (doseq [change changelog]
                 (apply-change! context change))))
+          ;; System ticks AFTER diff so systems (look-at, follow, shake)
+          ;; see current-frame positions and their writes aren't overwritten
+          (systems/dispatch-on-tick context delta-time)
           ;; Render all scenes
           (render-scenes! context delta-time)
           ;; Invoke after-render callback
