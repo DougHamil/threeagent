@@ -6,4 +6,5 @@
             [threeagent.virtual-scene.initial-context-test]
             [threeagent.virtual-scene.metadata-on-fn-component-test]
             [threeagent.virtual-scene.type-two-component-reaction-test]
-            [threeagent.virtual-scene.parent-transform-update-test]))
+            [threeagent.virtual-scene.parent-transform-update-test]
+            [threeagent.virtual-scene.scalar-transform-test]))

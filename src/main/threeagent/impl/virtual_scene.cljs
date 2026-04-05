@@ -57,10 +57,16 @@
         scene (.-scene ctx)]
     (.enqueueForRender scene node render-fn (.-forceReplace ctx))))
 
+(defn- normalize-vec3 [v default]
+  (cond
+    (number? v) [v v v]
+    (some? v) v
+    :else default))
+
 (defn- node-data [comp-key comp-config]
-  {:position (:position comp-config [0 0 0])
-   :rotation (:rotation comp-config [0 0 0])
-   :scale (:scale comp-config [1.0 1.0 1.0])
+  {:position (normalize-vec3 (:position comp-config) [0 0 0])
+   :rotation (normalize-vec3 (:rotation comp-config) [0 0 0])
+   :scale (normalize-vec3 (:scale comp-config) [1.0 1.0 1.0])
    :visible (:visible comp-config true)
    :cast-shadow (:cast-shadow comp-config false)
    :receive-shadow (:receive-shadow comp-config false)
@@ -94,7 +100,7 @@
         node (Node. context parent depth nil key (meta form) nil false nil nil children-map path)]
     (when (not (or (string? key)
                    (number? key)))
-      (throw (str "^:key must be a string or number, found: " key)))
+      (throw (js/Error. (str "^:key must be a string or number, found: " key))))
     (doseq [[idx child] (map-indexed vector children)]
       (when-let [child-node (->node scene context node idx child)]
         (.set children-map (.-key child-node) child-node)))
@@ -122,7 +128,7 @@
         node (Node. context parent depth (:id comp-config) key metadata data false nil nil children-map nil)]
     (when (not (or (string? key)
                    (number? key)))
-      (throw (str "^:key must be a string or number, found: " key)))
+      (throw (js/Error. (str "^:key must be a string or number, found: " key))))
     (doseq [[idx child] (map-indexed vector children)]
       (when-let [child-node (->node scene context node idx child)]
         (.set children-map (.-key child-node) child-node)))
