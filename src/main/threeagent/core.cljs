@@ -1,6 +1,7 @@
 (ns threeagent.core
   (:refer-clojure :exclude [atom])
   (:require [threeagent.impl.scene :as scene]
+            [threeagent.impl.types :refer [Context SceneContext]]
             [threeagent.impl.frame-pacer :as frame-pacer]
             [reagent.ratom :as ratom]))
 
@@ -82,6 +83,47 @@
   "
   ([root-fn dom-root] (render root-fn dom-root {}))
   ([root-fn dom-root opts] (scene/render root-fn dom-root opts)))
+
+;; ---------------------------------------------------------------------------
+;; Camera API
+;; ---------------------------------------------------------------------------
+
+(defn- get-scene-ctx
+  "Get the SceneContext for a scene key from the raw context."
+  ^SceneContext [ctx scene-key]
+  (when-let [^Context raw-ctx (:threeagent/raw-context ctx)]
+    (get (.-scenes raw-ctx) scene-key)))
+
+(defn- primary-scene-key [ctx]
+  (when-let [^Context raw-ctx (:threeagent/raw-context ctx)]
+    (.-primarySceneKey raw-ctx)))
+
+(defn get-camera
+  "Get the active camera for a scene. Uses the camera override if set,
+   otherwise the scene-managed camera. scene-key defaults to primary scene."
+  ([ctx]
+   (get-camera ctx (primary-scene-key ctx)))
+  ([ctx scene-key]
+   (when-let [sctx (get-scene-ctx ctx scene-key)]
+     (scene/effective-camera sctx))))
+
+(defn set-camera!
+  "Override the rendering camera for a scene. The scene-managed camera is
+   preserved and restored with reset-camera!. scene-key defaults to primary."
+  ([ctx camera]
+   (set-camera! ctx (primary-scene-key ctx) camera))
+  ([ctx scene-key camera]
+   (when-let [^SceneContext sctx (get-scene-ctx ctx scene-key)]
+     (set! (.-cameraOverride sctx) camera))))
+
+(defn reset-camera!
+  "Restore the scene-managed camera, removing any override.
+   scene-key defaults to primary."
+  ([ctx]
+   (reset-camera! ctx (primary-scene-key ctx)))
+  ([ctx scene-key]
+   (when-let [^SceneContext sctx (get-scene-ctx ctx scene-key)]
+     (set! (.-cameraOverride sctx) nil))))
 
 (defn frame-pacer-info
   "Returns a snapshot of the frame pacer's current state, or nil if

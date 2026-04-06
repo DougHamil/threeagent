@@ -24,6 +24,11 @@
 ;; Context map construction
 ;; ---------------------------------------------------------------------------
 
+(defn effective-camera
+  "Returns the camera override if set, otherwise the scene-managed camera."
+  ^js [^SceneContext sctx]
+  (or (.-cameraOverride sctx) (.-camera sctx)))
+
 (defn- raw-context->context [^Context raw-ctx]
   (let [scenes (.-scenes raw-ctx)
         primary-sctx ^SceneContext (get scenes (.-primarySceneKey raw-ctx))]
@@ -33,7 +38,8 @@
              :canvas (.-canvas raw-ctx)
              :frame-pacer (.-framePacer raw-ctx)
              :threejs-scenes (reduce-kv (fn [m k ^SceneContext sctx] (assoc m k (.-sceneRoot sctx))) {} scenes)
-             :scene-cameras (reduce-kv (fn [m k ^SceneContext sctx] (assoc m k (.-camera sctx))) {} scenes)}
+             :scene-cameras (reduce-kv (fn [m k ^SceneContext sctx] (assoc m k (.-camera sctx))) {} scenes)
+             :threeagent/raw-context raw-ctx}
       (.-renderPipeline raw-ctx)
       (assoc :threejs-render-pipeline (.-renderPipeline raw-ctx)))))
 
@@ -291,7 +297,7 @@
         scene-root (new three/Scene)]
     (when-let [bg (:background scene-opts)]
       (set! (.-background scene-root) (three/Color. bg)))
-    (SceneContext. key nil scene-root camera cameras camera nil)))
+    (SceneContext. key nil scene-root camera cameras camera nil nil)))
 
 (defn- clear-scene-ctx!
   "Clear all entities from a SceneContext. Sets activeSceneCtx before destroying."
@@ -315,8 +321,9 @@
         render-order (.-renderOrder context)
         pass-nodes (reduce (fn [m scene-key]
                              (let [sctx ^SceneContext (get scenes scene-key)
-                                   pass-node (pass (.-sceneRoot sctx) (.-camera sctx))]
-                               (set! (.-lastPipelineCamera sctx) (.-camera sctx))
+                                   cam (effective-camera sctx)
+                                   pass-node (pass (.-sceneRoot sctx) cam)]
+                               (set! (.-lastPipelineCamera sctx) cam)
                                (assoc m scene-key pass-node)))
                            {}
                            render-order)
@@ -334,7 +341,7 @@
         render-order (.-renderOrder context)
         camera-changed? (some (fn [scene-key]
                                 (let [sctx ^SceneContext (get scenes scene-key)]
-                                  (not (identical? (.-camera sctx)
+                                  (not (identical? (effective-camera sctx)
                                                    (.-lastPipelineCamera sctx)))))
                               render-order)]
     (when (or camera-changed? (nil? (.-renderPipeline context)))
@@ -358,7 +365,7 @@
       (if (= 1 (count render-order))
         ;; Single scene — simple render (backwards compatible path)
         (let [sctx ^SceneContext (get scenes (first render-order))]
-          (.render renderer (.-sceneRoot sctx) (.-camera sctx)))
+          (.render renderer (.-sceneRoot sctx) (effective-camera sctx)))
         ;; Multi scene — sequential with depth clearing
         (let [scene-opts (.-sceneOpts context)]
           (doseq [[idx scene-key] (map-indexed vector render-order)]
@@ -367,14 +374,14 @@
               (if (= 0 idx)
                 (do
                   (set! (.-autoClear renderer) true)
-                  (.render renderer (.-sceneRoot sctx) (.-camera sctx)))
+                  (.render renderer (.-sceneRoot sctx) (effective-camera sctx)))
                 (do
                   (set! (.-autoClear renderer) false)
                   (when (get sopts :clear-depth true)
                     (.clearDepth renderer))
                   (when (:clear-color sopts)
                     (.clearColor renderer))
-                  (.render renderer (.-sceneRoot sctx) (.-camera sctx))))))
+                  (.render renderer (.-sceneRoot sctx) (effective-camera sctx))))))
           ;; Restore autoClear
           (set! (.-autoClear renderer) true))))))
 

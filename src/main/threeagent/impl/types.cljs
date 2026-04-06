@@ -7,7 +7,8 @@
                        ^js camera
                        ^js cameras
                        ^js defaultCamera
-                       entityRegistry]
+                       entityRegistry
+                       ^js cameraOverride]
   Object)
 
 (deftype Context [^js domRoot
