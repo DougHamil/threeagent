@@ -117,3 +117,38 @@
        :then (fn []
                (is (= @state
                       (count (.-children (get-parent))))))}])))
+
+(deftest recursive-portal-test
+  ;; `[:>> "Name" ...]` portals do a single recursive search for a descendant
+  ;; by name — no need to spell out the full path. Useful for GLB/FBX assets
+  ;; whose internal hierarchy may be deep, unstable, or unknown.
+  (let [nested-obj (create-3js-obj ["Spine" "Neck" "Head" "Hat_Anchor"])
+        anchor (get-in-object nested-obj ["Spine" "Neck" "Head" "Hat_Anchor"])
+        root-fn (fn []
+                  [:object
+                   [:instance {:object nested-obj}
+                    [:>> "Hat_Anchor"
+                     [:object {:id "a"}]
+                     [:object {:id "b"}]]]])]
+    (fixture/async-run!
+     [{:when (fn [] (th/render root-fn @canvas))
+       :then (fn [] (is (= 2 (count (.-children anchor)))))}])))
+
+(deftest reactive-recursive-portal-test
+  ;; Reactive children under a `:>>` portal should add/remove correctly,
+  ;; same as under a regular `:>` portal.
+  (let [state (th/atom true)
+        nested-obj (create-3js-obj ["Spine" "Neck" "Head" "Hat_Anchor"])
+        anchor (get-in-object nested-obj ["Spine" "Neck" "Head" "Hat_Anchor"])
+        root-fn (fn []
+                  [:object
+                   [:instance {:object nested-obj}
+                    [:>> "Hat_Anchor"
+                     (when @state
+                       [:object {:id "a"}])
+                     [:object {:id "b"}]]]])]
+    (fixture/async-run!
+     [{:when (fn [] (th/render root-fn @canvas))
+       :then (fn [] (is (= 2 (count (.-children anchor)))))}
+      {:when (fn [] (reset! state false))
+       :then (fn [] (is (= 1 (count (.-children anchor)))))}])))

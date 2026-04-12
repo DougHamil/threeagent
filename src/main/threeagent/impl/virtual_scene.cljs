@@ -79,6 +79,7 @@
                    (let [l (first form)]
                      (cond
                        (= :> l) :portal
+                       (= :>> l) :portal
                        (keyword? l) :keyword
                        (fn? l) :fn
                        (map? l) :context
@@ -185,6 +186,7 @@
                              (cond
                                (fn? l) :fn
                                (= :> l) :portal
+                               (= :>> l) :portal
                                (keyword? l) :keyword
                                (map? l) :context
                                (sequential? l) :seq

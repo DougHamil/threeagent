@@ -42,11 +42,18 @@
   parent)
 
 (defn get-in [^three/Object3D parent path]
-  (if (seq path)
+  (cond
+    ;; :>> syntax: single descendant name, recursive lookup
+    (string? path)
+    (.getObjectByName parent path)
+
+    ;; :> syntax: step-by-step path (strings, ints, :.. to climb)
+    (seq path)
     (let [next (first path)]
       (if (string? next)
         (recur (.getObjectByName parent next) (rest path))
         (if (= :.. next)
           (recur (.-parent parent) (rest path))
           (recur (aget (.-children parent) next) (rest path)))))
-    parent))
+
+    :else parent))

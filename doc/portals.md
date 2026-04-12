@@ -60,3 +60,32 @@ We can also nest portals to clean up our scene graph. Let's say we want to put a
 
 With portals, we can cleanly integrate existing ThreeJS objects into our Threeagent scene-graph.
 
+## Recursive portals with `:>>`
+
+Sometimes the full path to the target object is inconvenient to spell out — either because it's deeply nested, the intermediate names are auto-generated (e.g. scene-graph nodes exported from Blender or Sketchfab), or the hierarchy could change between versions of the asset. For these cases Threeagent provides a second portal form, `:>>`, that takes a **single name string** and recursively searches the parent object's descendants for the first match:
+
+```clojure
+[:model {:type :player/character}
+ [:>> "Hat_Anchor"
+  [:model {:type hat-type}]]]
+```
+
+This is equivalent to calling `someObject.getObjectByName("Hat_Anchor")` on the parent's ThreeJS tree and using the result as the attachment point. If no descendant with that name exists, a console error is logged and an exception is thrown — same behavior as a broken `:>` path.
+
+### When to use which
+
+| Form | Argument | Traversal | Use when |
+|------|----------|-----------|----------|
+| `:>`  | Vector of path elements (strings, integers, or `:..`) | Step-by-step, each string uses `getObjectByName` | You know the exact path and want to be explicit, or need integer indices / `:..` to climb |
+| `:>>` | Single name string | One recursive `getObjectByName` | You just want to find a uniquely-named descendant, regardless of how deep |
+
+Both forms compose and can be nested freely:
+
+```clojure
+[:model {:type :player/character}
+ [:>> "Head"
+  [:model {:type hat-type}]]
+ [:>> "Hand_R"
+  [:model {:type :player/axe}]]]
+```
+
