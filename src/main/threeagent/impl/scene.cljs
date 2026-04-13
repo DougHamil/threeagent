@@ -131,6 +131,15 @@
      (when-not portal?
        (.add parent obj))
      (set! (.-threejs node) obj)
+     ;; Portals with a config apply only user-specified transforms — nil
+     ;; fields are skipped so the target's pre-existing position /
+     ;; rotation / scale / visibility aren't clobbered.
+     (when (and portal? (.-data node))
+       (let [{:keys [position rotation scale visible has-visible?]} (.-data node)]
+         (when position (threejs/set-position! obj position))
+         (when rotation (threejs/set-rotation! obj rotation))
+         (when scale (threejs/set-scale! obj scale))
+         (when has-visible? (set! (.-visible obj) visible))))
      (let [sctx ^SceneContext (active-scene-ctx ctx)]
        (registries/register-entity! (.-entityRegistry sctx) (.-id node) obj))
      (let [post-added-fns (on-entity-added ctx node obj component-config)]
@@ -142,7 +151,18 @@
 (defn- destroy-entity
   ([^Context ctx ^vscene/Node node]
    (if (portal? node)
-     (.for-each-child node (partial destroy-entity ctx))
+     (do
+       ;; For portals-with-config, fire on-removed / :on-removed / :ref-style
+       ;; cleanup hooks on the resolved target. Target itself stays in its
+       ;; original parent — portals don't own it.
+       (when-let [data (.-data node)]
+         (when-let [obj ^three/Object3D (.-threejs node)]
+           (let [post-removed-fns (on-entity-removed ctx node obj
+                                                      (:component-config data))]
+             (.for-each-child node (partial destroy-entity ctx))
+             (doseq [cb post-removed-fns] (cb)))))
+       (when-not (.-data node)
+         (.for-each-child node (partial destroy-entity ctx))))
      (let [{:keys [component-key
                    component-config]} (.-data node)
            entity-type (get (.-entityTypes ctx) component-key)
@@ -164,14 +184,28 @@
                 position
                 rotation
                 scale
-                visible]} new-data
-        entity-type (get (.-entityTypes ctx) component-key)
+                visible
+                has-visible?]} new-data
+        ;; component-key is nil for portal-with-config nodes — skip
+        ;; entity-type/update! in that case. Portals also skip nil
+        ;; transform fields so user-unspecified values aren't clobbered.
+        portal? (nil? component-key)
+        entity-type (when component-key
+                      (get (.-entityTypes ctx) component-key))
         obj  ^three/Object3D (.-threejs node)]
-    (entity/update! entity-type (.-context node) obj component-config)
-    (threejs/set-position! obj position)
-    (threejs/set-rotation! obj rotation)
-    (threejs/set-scale! obj scale)
-    (set! (.-visible obj) visible)
+    (when entity-type
+      (entity/update! entity-type (.-context node) obj component-config))
+    (if portal?
+      (do
+        (when position (threejs/set-position! obj position))
+        (when rotation (threejs/set-rotation! obj rotation))
+        (when scale (threejs/set-scale! obj scale))
+        (when has-visible? (set! (.-visible obj) visible)))
+      (do
+        (threejs/set-position! obj position)
+        (threejs/set-rotation! obj rotation)
+        (threejs/set-scale! obj scale)
+        (set! (.-visible obj) visible)))
     (on-entity-updated ctx node obj component-config)
     obj))
 
@@ -181,13 +215,24 @@
                 rotation
                 scale
                 visible
+                has-visible?
                 component-key
                 id]} (.-data node)
+        portal? (nil? component-key)
         obj ^three/Object3D (.-threejs node)]
-    (threejs/set-position! obj position)
-    (threejs/set-rotation! obj rotation)
-    (threejs/set-scale! obj scale)
-    (set! (.-visible obj) visible)))
+    (if portal?
+      ;; Portals: only apply user-specified fields, leaving untouched any
+      ;; the target came with (from GLB / JS / wherever).
+      (do
+        (when position (threejs/set-position! obj position))
+        (when rotation (threejs/set-rotation! obj rotation))
+        (when scale (threejs/set-scale! obj scale))
+        (when has-visible? (set! (.-visible obj) visible)))
+      (do
+        (threejs/set-position! obj position)
+        (threejs/set-rotation! obj rotation)
+        (threejs/set-scale! obj scale)
+        (set! (.-visible obj) visible)))))
 
 (defn- replace-entity
   "Destroy and recreate an entity at a given node in the scene-graph"
@@ -243,7 +288,19 @@
     (destroy-entity context node)
 
     :update
-    (when-not (portal? node)
+    (cond
+      ;; Portals with a config: re-apply user-specified transforms to the
+      ;; target. Skip the update-type dispatcher — portals have no
+      ;; entity-type, so :replace-entity / :update-entity wouldn't work.
+      (portal? node)
+      (when (some? (.-data node))
+        (try
+          (transform-entity context node)
+          (catch :default ex
+            (js/console.error "Failed to apply portal transforms" ex
+                              (clj->js (.-data node))))))
+
+      :else
       (case (update-type context node old-data new-data)
         :replace-entity (try
                           (replace-entity context node old-data new-data)

@@ -75,10 +75,29 @@
    :component-config (let [c (transient comp-config)]
                        (persistent! (dissoc! c :position :rotation :scale :visible)))}) ;(apply dissoc comp-config non-component-keys)})
 
+(defn- portal-node-data
+  "Portal targets already exist with their own transforms (from GLB / JS).
+   Only populate the fields the user actually specified so we don't
+   clobber pre-existing values with defaults."
+  [comp-config]
+  {:position (when (contains? comp-config :position)
+               (normalize-vec3 (:position comp-config) [0 0 0]))
+   :rotation (when (contains? comp-config :rotation)
+               (normalize-vec3 (:rotation comp-config) [0 0 0]))
+   :scale (when (contains? comp-config :scale)
+            (normalize-vec3 (:scale comp-config) [1.0 1.0 1.0]))
+   :visible (when (contains? comp-config :visible)
+              (:visible comp-config))
+   :has-visible? (contains? comp-config :visible)
+   :component-key nil
+   :component-config (let [c (transient comp-config)]
+                       (persistent! (dissoc! c :position :rotation :scale :visible)))})
+
 (defmulti ->node (fn [^Scene _scene _context ^Node _parent _key form]
                    (let [l (first form)]
                      (cond
                        (= :> l) :portal
+                       (= :>> l) :portal
                        (keyword? l) :keyword
                        (fn? l) :fn
                        (map? l) :context
@@ -91,13 +110,20 @@
 
 (defmethod ->node :empty-list [_scene _context _parent _key _form])
 
-(defmethod ->node :portal [scene context parent key [_ path & children :as form]]
-  (let [depth (if parent
+(defmethod ->node :portal [scene context parent key [_ path & rs :as form]]
+  (let [first-rest (first rs)
+        has-config? (map? first-rest)
+        config (when has-config? first-rest)
+        children (filter some? (if has-config? (rest rs) rs))
+        ;; Portal targets already exist with their own transforms. Only
+        ;; stash the fields the user actually provided so we don't clobber
+        ;; pre-existing values with defaults on apply.
+        data (when has-config? (portal-node-data config))
+        depth (if parent
                 (inc (.-depth parent))
                 0)
-        children (filter some? children)
         children-map (js/Map.)
-        node (Node. context parent depth nil key (meta form) nil false nil nil children-map path)]
+        node (Node. context parent depth nil key (meta form) data false nil nil children-map path)]
     (when (not (or (string? key)
                    (number? key)))
       (throw (js/Error. (str "^:key must be a string or number, found: " key))))
@@ -185,6 +211,7 @@
                              (cond
                                (fn? l) :fn
                                (= :> l) :portal
+                               (= :>> l) :portal
                                (keyword? l) :keyword
                                (map? l) :context
                                (sequential? l) :seq
@@ -211,11 +238,15 @@
 (defn- valid-child? [child]
   (and (some? child) (seq child)))
 
-(defmethod ->node-shallow :portal [key context [_ path & children :as form]]
-  (let [children (filter valid-child? children)]
+(defmethod ->node-shallow :portal [key context [_ path & rs :as form]]
+  (let [first-rest (first rs)
+        has-config? (map? first-rest)
+        config (when has-config? first-rest)
+        children (filter valid-child? (if has-config? (rest rs) rs))
+        data (if has-config? (portal-node-data config) {})]
    {:key key
     :context context
-    :data {}
+    :data data
     :portal-path path
     :form form
     :children-keys (map-indexed (fn [idx child]
