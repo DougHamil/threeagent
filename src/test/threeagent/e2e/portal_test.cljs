@@ -152,3 +152,35 @@
        :then (fn [] (is (= 2 (count (.-children anchor)))))}
       {:when (fn [] (reset! state false))
        :then (fn [] (is (= 1 (count (.-children anchor)))))}])))
+
+(deftest portal-config-transform-test
+  ;; A portal may carry a config map that applies transforms to the
+  ;; resolved target itself (not a new child entity).
+  (let [nested-obj (create-3js-obj ["Spine" "Neck" "Head"])
+        head (get-in-object nested-obj ["Spine" "Neck" "Head"])
+        root-fn (fn []
+                  [:object
+                   [:instance {:object nested-obj}
+                    [:>> "Head" {:rotation [0 (/ js/Math.PI 2) 0]
+                                 :scale [2 2 2]}]]])]
+    (fixture/async-run!
+     [{:when (fn [] (th/render root-fn @canvas))
+       :then (fn []
+               (is (= (/ js/Math.PI 2) (.-y (.-rotation head))))
+               (is (= 2 (.-x (.-scale head)))))}])))
+
+(deftest reactive-portal-config-test
+  ;; Updating a th/atom that feeds the portal config re-applies the new
+  ;; transforms to the resolved target.
+  (let [rot (th/atom 0.0)
+        nested-obj (create-3js-obj ["Spine" "Neck" "Head"])
+        head (get-in-object nested-obj ["Spine" "Neck" "Head"])
+        root-fn (fn []
+                  [:object
+                   [:instance {:object nested-obj}
+                    [:>> "Head" {:rotation [0 @rot 0]}]]])]
+    (fixture/async-run!
+     [{:when (fn [] (th/render root-fn @canvas))
+       :then (fn [] (is (= 0.0 (.-y (.-rotation head)))))}
+      {:when (fn [] (reset! rot (/ js/Math.PI 3)))
+       :then (fn [] (is (= (/ js/Math.PI 3) (.-y (.-rotation head)))))}])))

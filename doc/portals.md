@@ -89,3 +89,38 @@ Both forms compose and can be nested freely:
   [:model {:type :player/axe}]]]
 ```
 
+## Setting transforms on the portal target
+
+Portals can also accept a **config map** right after the path or name. When present, the map's transform / lifecycle keys are applied to the resolved target itself — no wrapper entity required. This is especially useful for reactively driving a named node's transform from game state:
+
+```clojure
+(defn water-gun [nozzle-rot]
+  [:model {:type :model/water-gun}
+   [:>> "NOZZLE" {:rotation [0 Math/PI nozzle-rot]}]])
+```
+
+Each re-render the new config is applied to the resolved `NOZZLE` object. Updating the atom that drives `nozzle-rot` rotates the named node live — no extra `:object` / `:model` wrapping in the scene graph.
+
+### Supported config keys
+
+Only the standard entity-transform / lifecycle keys are reflected onto the target:
+
+- `:position`, `:rotation`, `:scale` — accepts `[x y z]` or a scalar (applied to all three axes).
+- `:visible` — boolean.
+- `:ref` — called with the resolved target once on mount.
+- `:on-added`, `:on-removed`, `:on-updated` — lifecycle hooks, same semantics as on regular entities.
+
+Arbitrary other keys are ignored (the portal doesn't own the target, so we don't reflect material / geometry props onto it).
+
+### Unmount behavior
+
+When a portal with a config is unmounted, its applied transforms **persist** — the target keeps whatever values the portal last set. Portals don't own their target, so we don't snapshot/restore. If you need the original transform restored, capture the values in an `:on-added` callback and reset them in `:on-removed`.
+
+Works with both portal forms:
+
+```clojure
+[:instance {:object loaded-glb}
+ [:> ["Spine" "Neck"] {:visible false}]      ;; hide via path
+ [:>> "Hat_Anchor"    {:scale 1.2}]]         ;; scale via recursive lookup
+```
+
