@@ -93,6 +93,23 @@
    :component-config (let [c (transient comp-config)]
                        (persistent! (dissoc! c :position :rotation :scale :visible)))})
 
+(defn- valid-child? [child]
+  (and (some? child) (seq child)))
+
+(defn- child-key
+  "Computes the key for a child form, preferring ^:key metadata, then a
+   string/number :key in the child's config map, then the child's index.
+   Must be used identically by the deep build (->node) and the shallow
+   diff (->node-shallow) so child identity is stable between mount and
+   update."
+  [idx child]
+  (let [config-key (when (and (sequential? child) (map? (second child)))
+                     (:key (second child)))]
+    (or (:key (meta child))
+        (when (or (string? config-key) (number? config-key))
+          config-key)
+        idx)))
+
 (defmulti ->node (fn [^Scene _scene _context ^Node _parent _key form]
                    (let [l (first form)]
                      (cond
@@ -114,7 +131,7 @@
   (let [first-rest (first rs)
         has-config? (map? first-rest)
         config (when has-config? first-rest)
-        children (filter some? (if has-config? (rest rs) rs))
+        children (filter valid-child? (if has-config? (rest rs) rs))
         ;; Portal targets already exist with their own transforms. Only
         ;; stash the fields the user actually provided so we don't clobber
         ;; pre-existing values with defaults on apply.
@@ -128,7 +145,7 @@
                    (number? key)))
       (throw (js/Error. (str "^:key must be a string or number, found: " key))))
     (doseq [[idx child] (map-indexed vector children)]
-      (when-let [child-node (->node scene context node idx child)]
+      (when-let [child-node (->node scene context node (child-key idx child) child)]
         (.set children-map (.-key child-node) child-node)))
     node))
 
@@ -145,7 +162,7 @@
         key (or (:key metadata) key)
         has-config? (map? first-child)
         comp-config (if has-config? first-child {})
-        children (filter some? (if has-config? (rest rs) rs))
+        children (filter valid-child? (if has-config? (rest rs) rs))
         children-map (js/Map.)
         data (node-data comp-key comp-config)
         depth (if parent
@@ -156,7 +173,7 @@
                    (number? key)))
       (throw (js/Error. (str "^:key must be a string or number, found: " key))))
     (doseq [[idx child] (map-indexed vector children)]
-      (when-let [child-node (->node scene context node idx child)]
+      (when-let [child-node (->node scene context node (child-key idx child) child)]
         (.set children-map (.-key child-node) child-node)))
     node))
 
@@ -235,9 +252,6 @@
     (let [m (meta form)]
       (->node-shallow (get-key key m) context (with-meta (into [:object] form) m)))))
 
-(defn- valid-child? [child]
-  (and (some? child) (seq child)))
-
 (defmethod ->node-shallow :portal [key context [_ path & rs :as form]]
   (let [first-rest (first rs)
         has-config? (map? first-rest)
@@ -250,13 +264,8 @@
     :portal-path path
     :form form
     :children-keys (map-indexed (fn [idx child]
-                                  (let [k (or (:key (meta child))
-                                              (when (and (sequential? child) (map? (second child)))
-                                                (:key (second child)))
-                                              idx)]
-                                    [k child]))
+                                  [(child-key idx child) child])
                                 children)}))
-  
 
 (defmethod ->node-shallow :keyword [key context form]
   (let [[comp-key & rs] form
@@ -270,13 +279,7 @@
      :data (node-data comp-key comp-config)
      :form form
      :children-keys (map-indexed (fn [idx child]
-                                   (let [config-key (when (and (sequential? child) (map? (second child)))
-                                                      (:key (second child)))
-                                         k (or (:key (meta child))
-                                               (when (or (string? config-key) (number? config-key))
-                                                 config-key)
-                                               idx)]
-                                     [k child]))
+                                   [(child-key idx child) child])
                                  children)}))
 
 (defn- dispose-node! [^Node node]
@@ -330,6 +333,9 @@
 (defn- update-node! [^Scene scene ^Node node new-form ^js render-fn changelog force-rerender?]
   (when (or force-rerender?
             (not (same-args? node new-form)))
+    ;; This node is being re-rendered, so any pending render-queue entry
+    ;; for it is now redundant; clear the dirty flag so render! skips it.
+    (set! (.-dirty node) false)
     (let [key (.-key node)
           children (.-children node)
           parent (.-parent node)
@@ -396,7 +402,13 @@
     (loop [entry ^RenderQueueEntry (.dequeue queue)]
       (when entry
         (when-let [node ^Node (.-node entry)]
-          (when-not (.-disposed node)
+          ;; Skip nodes that were disposed or already re-rendered (by an
+          ;; ancestor's update) earlier in this flush. Force-replace entries
+          ;; always run: an outer (form-2) reaction requires replacement,
+          ;; which an in-place ancestor update does not subsume.
+          (when (and (not (.-disposed node))
+                     (or ^boolean (.-forceReplace entry)
+                         (.-dirty node)))
             (render-node! scene node (.-renderFn entry) (.-forceReplace entry) changelog))
           (recur ^RenderQueueEntry (.dequeue queue)))))))
 
