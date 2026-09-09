@@ -518,11 +518,17 @@
                                                          auto-frame-pacing
                                                          render-order
                                                          render-pipeline
+                                                         renderer-opts
                                                          scenes]}]
   (let [canvas (get-canvas dom-root)
         width (.-offsetWidth canvas)
         height (.-offsetHeight canvas)
-        renderer (new three/WebGPURenderer (clj->js {:canvas canvas}))
+        ;; Merge caller-supplied opts (e.g. {:trackTimestamp true}) on
+        ;; top of the canvas binding. The merge order means callers
+        ;; can't accidentally override the canvas, but they can add
+        ;; any other WebGPURenderer constructor option.
+        renderer (new three/WebGPURenderer
+                      (clj->js (merge renderer-opts {:canvas canvas})))
         clock (new three/Clock)
         frame-interval (when (and target-framerate (not auto-frame-pacing))
                          (* 1000.0 (/ 1.0 target-framerate)))
