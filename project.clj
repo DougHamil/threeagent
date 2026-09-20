@@ -25,7 +25,7 @@
             [lein-shell "0.5.0"]]
 
   :profiles {:dev {:dependencies [[org.clojure/clojurescript "1.11.54"]
-                                  [cider/cider-nrepl "0.20.1-SNAPSHOT"]
+                                  [cider/cider-nrepl "0.20.0"]
                                   [cider/piggieback "0.3.10"]
                                   [figwheel "0.5.18"]
                                   [doo "0.1.11"]
