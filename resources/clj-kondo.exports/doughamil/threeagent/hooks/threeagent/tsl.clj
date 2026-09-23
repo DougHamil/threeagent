@@ -27,3 +27,12 @@
     {:node (api/list-node [(api/token-node 'def)
                            fname
                            (api/list-node (concat [(api/token-node 'fn) params] body))])}))
+
+(defn defcompute
+  "(defcompute name doc? opts & body) -> (def name (do opts body...))"
+  [{:keys [node]}]
+  (let [[_ cname & args] (:children node)
+        args (if (api/string-node? (first args)) (rest args) args)]
+    {:node (api/list-node [(api/token-node 'def)
+                           cname
+                           (api/list-node (cons (api/token-node 'do) args))])}))
