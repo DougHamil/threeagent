@@ -33,6 +33,8 @@
      RenderPipeline (WebGPU). Receives a map of `{scene-key -> pass-node}` where
      each pass-node is a `pass(scene, camera)` TSL node. Must return the output
      node for the pipeline. Works with both single and multi-scene modes.
+     May also be hiccup, e.g. `[:add :world [my-bloom {:strength 0.4} :world]]`;
+     see `threeagent.tsl.pipeline`.
    - `:scenes` - Optional map of per-scene options keyed by scene key:
      - `:background` - Scene background color (hex number or CSS string)
      - `:clear-depth` - Clear depth buffer before rendering (default true for

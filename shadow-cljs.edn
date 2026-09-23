@@ -1,5 +1,7 @@
 {:source-paths ["src/main" "src/test" "examples/src" "src/render_test"]
- :dependencies [[reagent "2.0.1"]]
+ :dependencies [[reagent "2.0.1"]
+                ;; test-only: exercises threeagent.tsl.sci
+                [org.babashka/sci "0.15.58"]]
  :builds {:test     {:target    :browser-test
                      :test-dir  "resources/public/js/test"
                      :ns-regexp "-test$"

@@ -11,7 +11,8 @@
    ["Extending Threeagent" {:file "doc/extending_threeagent.md"}]
    ["Portals" {:file "doc/portals.md"}]
    ["Contexts" {:file "doc/contexts.md"}]
-   ["Shadows" {:file "doc/shadows.md"}]]
+   ["Shadows" {:file "doc/shadows.md"}]
+   ["Shaders (TSL)" {:file "doc/shaders.md"}]]
   ["Upgrading to v1.x" {:file "doc/migration_v1.md"}]
   ["FAQ" {:file "doc/faq.md"}]]}
  
