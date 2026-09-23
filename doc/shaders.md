@@ -33,7 +33,7 @@ Inside `shader`, `defshader`, `shader-fn`, `defshader-fn`, `compute` and `defcom
 | --- | --- |
 | `(+ a b c)` `(- a)` `(* a b)` `(/ a b)` `(mod a b)` | `add` `negate` `mul` `div` `mod` |
 | `(< a b)` `(= a b)` `(not= a b)` `(and a b)` `(or a b)` `(not a)` | `lessThan` `equal` `notEqual` `and` `or` `not` |
-| `[x y]` `[x y z]` `[x y z w]` | `vec2` `vec3` `vec4` |
+| `[x y z]` `[xyz 1]` `[uv 0 1]` | a vector sized by its total components: `vec3`, `vec4`, `vec4` |
 | `(:xyz v)` `(.-x v)` | swizzles |
 | `(nth buf i)` | `buf.element(i)` |
 | `(if test a b)` | `select(test, a, b)` |
@@ -68,7 +68,11 @@ Symbol resolution follows these rules:
   - Vars from your own namespace pass through too, as long as they don't collide with a TSL name.
 - **`range`, `hash`, `print` and `array` keep their Clojure meaning.** Reach the TSL versions with `(threeagent.tsl/$ "range" ...)`.
 - **`(clj form)`** leaves `form` completely untouched.
-- **Raw interop** such as `(.toVar n)` and `(.-value u)` always works, for anything the macros don't cover.
+- **Raw interop** such as `(.toVar n)` and `(.-value u)` always works, for anything the macros don't cover. Interop targets are tagged `^js`, so member names survive advanced compilation.
+
+### Vector literals
+
+A vector literal joins its parts. `[x y z]` of scalars is a `vec3`, and `[pos 1]` with a vec3 `pos` is a `vec4`. The size is resolved when the shader builds, from the total component count (TSL's `JoinNode`). Literals take 2-4 parts. Wrap a Clojure vector that should stay on the CPU in `(clj ...)`, e.g. a table of constants you `reduce` over.
 
 ### Number literals
 
@@ -148,6 +152,14 @@ The shader returns a node, which becomes the `colorNode`, or a map of outputs wh
 
 - **A scene keyword** (`:world`, or `:default` for a single scene) is that scene's color output. `[:pass :world "depth"]` picks another output.
 - **`[effect opts? & inputs]`** calls `(effect input-nodes opts)`. The head is a function, a keyword from `register-effect!`, or one of the built-ins `:add` `:sub` `:mul` `:mix`.
+- **Equal subforms are built once** and share their node. An effect that appears in two branches, together with its uniforms, exists only once:
+
+```clojure
+(let [fog [volumetric-fog [:pass :game "depth"]]]
+  [retro-mix
+   [:add :game fog]
+   [posterize [:add [pixelate :game] fog]]])
+```
 
 ## SCI
 

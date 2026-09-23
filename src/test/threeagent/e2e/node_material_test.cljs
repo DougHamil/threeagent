@@ -2,7 +2,8 @@
   (:require [cljs.test :refer-macros [deftest is use-fixtures async]]
             [threeagent.e2e.fixture :as fixture]
             [threeagent.core :as th]
-            [threeagent.tsl :refer-macros [defshader defshader-fn]]
+            ["three/tsl" :as t]
+            [threeagent.tsl :refer-macros [defshader defshader-fn compute shader]]
             [threeagent.tsl.material :as m]))
 
 (defonce canvas (atom nil))
@@ -17,8 +18,12 @@
     (- 1 acc)))
 
 (defshader pulse [{:keys [strength tint]}]
-  {:color (* tint strength (falloff (length (- (uv) [0.5 0.5]))))
-   :opacity (smoothstep 0.5 0.4 (length (- (uv) [0.5 0.5])))})
+  ;; [vec3 1] must join to a vec4 for the .rgb swizzle to be valid
+  {:color (:rgb [(* tint strength (falloff (length (- (uv) [0.5 0.5])))) 1])
+   ;; perspective-depth-to-view-z is an Fn Proxy export: calling it through
+   ;; .call would shift its arguments and emit a literal `null`
+   :opacity (* (smoothstep 0.5 0.4 (length (- (uv) [0.5 0.5])))
+               (perspective-depth-to-view-z 0.5 1 100))})
 
 (defn- capture-errors []
   (let [errors (atom [])
@@ -72,6 +77,7 @@
                           (is (re-find #"falloff\s*\(" frag) "typed defshader-fn emits a named function")
                           (is (re-find #"for\s*\(" frag) "dotimes emits a loop")
                           (is (re-find #"if\s*\(" frag) "when with a node test emits an if")
+                          (is (not (re-find #"\bnull\b" frag)) "Fn exports get their arguments unshifted")
                           (is (re-find #"if[^\n]*0\.25" frag)
                               "fractional literals against an int node stay fractional"))
                         (done)))
@@ -97,3 +103,27 @@
                                         (is (some? (.-renderPipeline raw)) "pipeline built from hiccup")
                                         (is (some? (.-outputNode ^js (.-renderPipeline raw))))
                                         (done)))))))))
+
+(deftest compute-runs-on-gpu
+  (let [ctx (th/render (fn [] [:object]) @canvas)
+        ^js renderer (:threejs-renderer ctx)
+        n 64
+        ^js buf (t/instancedArray (js/Float32Array. (range n)) "float")
+        kernel (compute {:count n}
+                 (let [i instance-index
+                       x (nth buf i)]
+                   (when (> x 31.5)
+                     (set! (nth buf i) (+ (* x 2) 0.5)))))]
+    (async done
+           (-> (.init renderer)
+               (.then #(.computeAsync renderer kernel))
+               (.then #(.getArrayBufferAsync renderer (.-value buf)))
+               (.then (fn [ab]
+                        (let [out (vec (js/Float32Array. ab))]
+                          (is (= (range 32) (take 32 out)) "untouched below the threshold")
+                          (is (= (map #(+ (* % 2) 0.5) (range 32 64)) (drop 32 out))
+                              "doubled (+ 0.5) above it"))
+                        (done)))
+               (.catch (fn [e]
+                         (is (nil? e) (str "compute failed: " e))
+                         (done)))))))

@@ -129,6 +129,14 @@
 
 (declare compile-form)
 
+(defn- js-tag
+  "Tag an interop target ^js; values that cannot carry metadata pass as is."
+  [form]
+  (if #?(:clj (instance? clojure.lang.IObj form)
+         :cljs (satisfies? IWithMeta form))
+    (vary-meta form assoc :tag 'js)
+    form))
+
 (defn- compile-body [forms locals]
   (map #(compile-form % locals) forms))
 
@@ -289,7 +297,7 @@
              (str/starts-with? (name h) ".-")
              (not (swizzle? (subs (name h) 2))))
       ;; plain JS property: CPU set!
-      `(set! (~h ~(compile-form (second target) locals)) ~(compile-form value locals))
+      `(set! (~h ~(js-tag (compile-form (second target) locals))) ~(compile-form value locals))
       `(~(rt-sym 'assign!) ~(lvalue target locals) ~(compile-form value locals)))))
 
 (defn- compile-op-assign [[op target value :as form] locals]
@@ -341,8 +349,8 @@
 
 (defn- compile-vector [v locals]
   (case (count v)
-    (2 3 4) `(~(rt-sym '$) ~(str "vec" (count v)) ~@(compile-body v locals))
-    (error "vector literals in shader code become vec2/vec3/vec4 and need 2-4 elements; wrap CPU vectors in (clj ...)" v)))
+    (2 3 4) `(~(rt-sym 'join) ~@(compile-body v locals))
+    (error "vector literals in shader code build vectors from 2-4 parts ([x y z], [xyz 1]); wrap CPU vectors in (clj ...)" v)))
 
 (defn- compile-list [form locals]
   (let [h (first form)
@@ -386,13 +394,14 @@
       (and (keyword? h) (= 2 (count form)))
       `(~(rt-sym 'kw) ~(compile-form (second form) locals) ~h)
 
-      ;; interop: keep the member, compile the target and args
+      ;; interop: keep the member, compile the target (tagged ^js so
+      ;; advanced compilation keeps the member name) and args
       (and (symbol? h) (str/starts-with? (name h) "."))
-      `(~h ~@(compile-body (rest form) locals))
+      `(~h ~(js-tag (compile-form (second form) locals)) ~@(compile-body (drop 2 form) locals))
 
       ;; (. target member args...)
       (and special? (= '. h))
-      `(. ~(compile-form (second form) locals)
+      `(. ~(js-tag (compile-form (second form) locals))
           ~@(let [[member & args] (drop 2 form)]
               (if (seq? member)
                 [(list* (first member) (compile-body (rest member) locals))]

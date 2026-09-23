@@ -36,4 +36,4 @@
                                           (compute {:count 8}
                                             (set! (nth buf instance-index) 1)))")))))
   (testing "compile errors surface"
-    (is (thrown-with-msg? js/Error #"2-4 elements" (ev "(shader [1])")))))
+    (is (thrown-with-msg? js/Error #"2-4 parts" (ev "(shader [1])")))))

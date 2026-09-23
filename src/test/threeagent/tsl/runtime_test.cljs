@@ -3,6 +3,7 @@
    node objects TSL returns."
   (:require [cljs.test :refer-macros [deftest is testing]]
             ["three/tsl" :as t]
+            ["three/webgpu" :refer [JoinNode]]
             [threeagent.tsl :as tsl :refer-macros [shader defshader shader-fn defshader-fn compute]]))
 
 (defn- op [^js n] (.-op ^js (.-node n)))
@@ -17,6 +18,18 @@
     (is (= "+" (op n))))
   (testing "unary minus negates nodes"
     (is (tsl/node? (shader (- (uv)))))))
+
+(deftest vector-literals
+  (testing "numbers only: vecN"
+    (is (tsl/node? (shader [1 0 0]))))
+  (testing "with nodes: a JoinNode sized by total components at build time"
+    (let [n (shader [position-local 1])]
+      (is (instance? JoinNode n))
+      (is (= 2 (.-length (.-nodes ^js n)))))))
+
+(deftest interop-on-expressions
+  ;; compiles without an infer warning: the macro tags interop targets ^js
+  (is (tsl/node? (shader (.toVar (/ (uv) 2))))))
 
 (deftest swizzle-vs-lookup
   (let [u (t/uniform (t/vec3 1 2 3))]

@@ -28,6 +28,13 @@
   (testing "unknown effects fail loudly"
     (is (thrown-with-msg? js/Error #"Unknown render pipeline effect" (pipeline/build [:nope :world] passes)))))
 
+(deftest shared-subforms
+  (let [calls (atom 0)
+        effect (fn [[x] _] (swap! calls inc) (tsl/mul x 2))
+        sub [effect :world]]
+    (pipeline/build [:add sub [:mul sub 0.5]] passes)
+    (is (= 1 @calls) "equal subforms build once")))
+
 (deftest pipeline-fn
   (let [f (fn [_] :node)]
     (is (identical? f (pipeline/->pipeline-fn f))))

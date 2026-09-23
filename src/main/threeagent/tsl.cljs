@@ -18,7 +18,8 @@
    so the SCI integration can reach them, and usable directly."
   (:refer-clojure :exclude [mod rem inc dec min max not nth
                             bit-and bit-or bit-xor bit-not bit-shift-left bit-shift-right])
-  (:require ["three/tsl" :as tsl-module])
+  (:require ["three/tsl" :as tsl-module]
+            ["three/webgpu" :refer [JoinNode]])
   (:require-macros [threeagent.tsl]))
 
 (def T
@@ -46,13 +47,32 @@
   (export n))
 
 (defn $
-  "Call the three/tsl export named `n`."
-  ([n] (.call (export n) nil))
-  ([n a] (.call (export n) nil a))
-  ([n a b] (.call (export n) nil a b))
-  ([n a b c] (.call (export n) nil a b c))
-  ([n a b c d] (.call (export n) nil a b c d))
-  ([n a b c d & more] (.apply (export n) nil (to-array (list* a b c d more)))))
+  "Call the three/tsl export named `n`.
+
+   Uses Reflect.apply: many exports are `Fn` Proxies whose `get` trap turns
+   `f.call(null, a)` into `FnNode.call(null, a)`, shifting every argument."
+  ([n] (js/Reflect.apply (export n) nil #js []))
+  ([n a] (js/Reflect.apply (export n) nil #js [a]))
+  ([n a b] (js/Reflect.apply (export n) nil #js [a b]))
+  ([n a b c] (js/Reflect.apply (export n) nil #js [a b c]))
+  ([n a b c d] (js/Reflect.apply (export n) nil #js [a b c d]))
+  ([n a b c d & more] (js/Reflect.apply (export n) nil (to-array (list* a b c d more)))))
+
+;; ---------------------------------------------------------------------------
+;; Vector literals
+;; ---------------------------------------------------------------------------
+
+(defn join
+  "`[a b c]` in shader code. All numbers: `vecN` of that many components.
+   With nodes: a JoinNode, whose size is the total component count, resolved
+   when the shader builds - so `[pos 1]` with a vec3 `pos` is a vec4."
+  [& xs]
+  (if (some node? xs)
+    ($ "nodeObject" (JoinNode. (to-array (map #(if (node? %) % ($ "float" %)) xs))))
+    (case (count xs)
+      2 ($ "vec2" (first xs) (second xs))
+      3 ($ "vec3" (first xs) (second xs) (cljs.core/nth xs 2))
+      4 ($ "vec4" (first xs) (second xs) (cljs.core/nth xs 2) (cljs.core/nth xs 3)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Operators: nodes in, node out; numbers in, number out

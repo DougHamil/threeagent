@@ -35,16 +35,16 @@
   (is (= '(threeagent.tsl/nth buf i) (expand '(nth buf i)))))
 
 (deftest literals
-  (is (= '(threeagent.tsl/$ "vec3" 1 0 0) (expand '[1 0 0])))
-  (is (= '(threeagent.tsl/$ "vec2" (threeagent.tsl/$get "uv") 0) (expand '[uv 0])))
-  (is (= {:color '(threeagent.tsl/$ "vec3" 1 1 1)} (expand '{:color [1 1 1]})))
+  (is (= '(threeagent.tsl/join 1 0 0) (expand '[1 0 0])))
+  (is (= '(threeagent.tsl/join (threeagent.tsl/$get "uv") 0) (expand '[uv 0])))
+  (is (= {:color '(threeagent.tsl/join 1 1 1)} (expand '{:color [1 1 1]})))
   (is (= '[1] (expand '(clj [1]))))
-  (is (thrown-with-msg? js/Error #"2-4 elements" (expand '[1]))))
+  (is (thrown-with-msg? js/Error #"2-4 parts" (expand '[1]))))
 
 (deftest swizzles-and-interop
   (is (= '(threeagent.tsl/kw v :xyz) (expand '(:xyz v))))
   (is (= '(.-x (threeagent.tsl/$ "uv")) (expand '(.-x (uv)))))
-  (is (= '(.toVar (threeagent.tsl/$ "vec3" 0 0 0)) (expand '(.toVar [0 0 0])))))
+  (is (= '(.toVar (threeagent.tsl/join 0 0 0)) (expand '(.toVar [0 0 0])))))
 
 (deftest threading
   (is (= '(threeagent.tsl/$ "mix" (threeagent.tsl/add x 0.5) b c)
@@ -54,7 +54,7 @@
 
 (deftest binding-forms
   (testing "let values compile, patterns do not, bound names shadow"
-    (is (= '(let [length (threeagent.tsl/$ "vec2" 1 2)] length)
+    (is (= '(let [length (threeagent.tsl/join 1 2)] length)
            (expand '(let [length [1 2]] length)))))
   (testing "for/doseq keep their binding vectors"
     (is (= '(for [i (range 3) :let [k (threeagent.tsl/mul i 2)]] (threeagent.tsl/mul k x))

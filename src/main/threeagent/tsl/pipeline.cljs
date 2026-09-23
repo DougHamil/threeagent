@@ -31,26 +31,34 @@
     (throw (js/Error. (str "Render pipeline references unknown scene " k
                            ", known scenes: " (keys passes))))))
 
-(defn build
-  "Turn a pipeline hiccup `form` into an output node given `{scene-key -> pass}`."
-  [form passes]
+(defn- build* [form passes cache]
   (cond
     (keyword? form) (pass-output passes form "output")
 
     (vector? form)
-    (let [[head & more] form]
-      (if (= :pass head)
-        (let [[k texture-name] more]
-          (pass-output passes k (or texture-name "output")))
-        (let [[opts inputs] (if (map? (first more)) [(first more) (rest more)] [{} more])
-              f (cond
-                  (fn? head) head
-                  (keyword? head) (or (get @effects head)
-                                      (throw (js/Error. (str "Unknown render pipeline effect " head))))
-                  :else (throw (js/Error. (str "Invalid render pipeline effect " head))))]
-          (f (mapv #(build % passes) inputs) opts))))
+    (or (get @cache form)
+        (let [[head & more] form
+              node (if (= :pass head)
+                     (let [[k texture-name] more]
+                       (pass-output passes k (or texture-name "output")))
+                     (let [[opts inputs] (if (map? (first more)) [(first more) (rest more)] [{} more])
+                           f (cond
+                               (fn? head) head
+                               (keyword? head) (or (get @effects head)
+                                                   (throw (js/Error. (str "Unknown render pipeline effect " head))))
+                               :else (throw (js/Error. (str "Invalid render pipeline effect " head))))]
+                       (f (mapv #(build* % passes cache) inputs) opts)))]
+          (swap! cache assoc form node)
+          node))
 
     :else form))
+
+(defn build
+  "Turn a pipeline hiccup `form` into an output node given `{scene-key -> pass}`.
+   Equal subforms are built once and share their node, so an effect used in
+   two branches (and its uniforms) exists only once."
+  [form passes]
+  (build* form passes (atom {})))
 
 (defn ->pipeline-fn
   "The `:render-pipeline` option as a fn of passes: hiccup is compiled with
