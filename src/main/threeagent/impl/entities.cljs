@@ -17,6 +17,21 @@
     config
     (material-cache config)))
 
+(def ^:private non-geometry-keys #{:material :cast-shadow :receive-shadow})
+
+(defn- geometry-key
+  "The part of a mesh config its geometry depends on: everything but the
+   material, shadow flags and callbacks."
+  [config]
+  (reduce-kv (fn [m k v]
+               (if (or (contains? non-geometry-keys k) (fn? v))
+                 m
+                 (assoc m k v)))
+             {}
+             config))
+
+(defonce ^:private geometry-keys (js/WeakMap.))
+
 (defn- mesh-material
   "Material for `mesh` from a `:material` config: a Material instance, a node
    material spec (see threeagent.tsl.material), or a phong config map."
@@ -31,6 +46,7 @@
   (create [_ _ config]
     (let [geo (geo-fn config)
           mesh (three/Mesh. geo)]
+      (.set geometry-keys mesh (geometry-key config))
       (set! (.-material mesh) (mesh-material mesh (:material config)))
       (set! (.-castShadow mesh) (:cast-shadow config))
       (set! (.-receiveShadow mesh) (:receive-shadow config))
@@ -41,9 +57,16 @@
       (.dispose geo)))
   IUpdateableEntityType
   (update! [_ _ ^three/Mesh mesh config]
-    (let [old-geo (.-geometry mesh)
-          geo (geo-fn config)
+    ;; Only rebuild the geometry when its config changed: disposing it also
+    ;; releases GPU buffers the material may share (e.g. with compute), and a
+    ;; material or uniform change shouldn't cost a new geometry.
+    (let [geo-key (geometry-key config)
+          old-geo (.-geometry mesh)
+          geo (if (and old-geo (= geo-key (.get geometry-keys mesh)))
+                old-geo
+                (geo-fn config))
           mat (mesh-material mesh (:material config))]
+      (.set geometry-keys mesh geo-key)
       (when (and old-geo (not (identical? old-geo geo)))
         (.dispose old-geo))
       (set! (.-geometry mesh) geo)
