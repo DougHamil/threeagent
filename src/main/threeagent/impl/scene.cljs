@@ -7,6 +7,8 @@
             [threeagent.impl.system :as systems]
             [threeagent.impl.registry :as registries]
             [threeagent.impl.frame-pacer :as frame-pacer]
+            [threeagent.tsl.material :as node-material]
+            [threeagent.tsl.pipeline :as tsl-pipeline]
             [clojure.string :as string]
             ["three/webgpu" :as three]
             ["three/tsl" :refer [pass]]))
@@ -563,7 +565,7 @@
       (set! (.-systemKeys context) sorted-sys-keys)
       (set! (.-sceneOpts context) scene-opts)
       (when render-pipeline
-        (set! (.-renderPipelineFn context) render-pipeline))
+        (set! (.-renderPipelineFn context) (tsl-pipeline/->pipeline-fn render-pipeline)))
       ;; Systems are initialized before first virtual-render
       (systems/dispatch-init normalized-systems
                              sorted-sys-keys
@@ -613,6 +615,9 @@
     (doseq [[_ sctx] old-scenes]
       (clear-scene-ctx! old-context sctx)
       (vscene/destroy! (.-virtualScene ^SceneContext sctx)))
+    ;; Old entities released their node materials; free the ones nothing uses
+    ;; (e.g. built from a shader fn that hot reload just redefined)
+    (node-material/dispose-unused!)
     ;; Dispose old RenderPipeline
     (when-let [pipeline (.-renderPipeline old-context)]
       (.dispose pipeline)
@@ -633,7 +638,7 @@
         (set! (.-renderOrder old-context) scene-keys)
         (set! (.-primarySceneKey old-context) primary-key)
         (set! (.-sceneOpts old-context) scene-opts)
-        (set! (.-renderPipelineFn old-context) render-pipeline)
+        (set! (.-renderPipelineFn old-context) (tsl-pipeline/->pipeline-fn render-pipeline))
         ;; Create new SceneContexts
         (let [scene-ctxs (reduce (fn [m k]
                                    (let [sctx (create-scene-context k width height (get scene-opts k))]

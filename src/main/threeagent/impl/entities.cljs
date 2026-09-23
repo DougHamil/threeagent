@@ -3,6 +3,7 @@
   This namespace is meant for internal use only, these functions are subject to change."
   (:require [threeagent.entity :refer [IEntityType IUpdateableEntityType]]
             [threeagent.impl.threejs :as threejs]
+            [threeagent.tsl.material :as node-material]
             [threeagent.impl.util :refer [pi pi-times-2 pi-over-2]]
             ["three/webgpu" :as three]
             [clojure.set :refer [rename-keys]]
@@ -16,23 +17,33 @@
     config
     (material-cache config)))
 
+(defn- mesh-material
+  "Material for `mesh` from a `:material` config: a Material instance, a node
+   material spec (see threeagent.tsl.material), or a phong config map."
+  [mesh config]
+  (if (node-material/spec? config)
+    (node-material/update! mesh config)
+    (do (node-material/release! mesh)
+        (->material config))))
+
 (deftype MeshEntity [geo-fn]
   IEntityType
   (create [_ _ config]
     (let [geo (geo-fn config)
-          mat (->material (:material config))
-          mesh (three/Mesh. geo mat)]
+          mesh (three/Mesh. geo)]
+      (set! (.-material mesh) (mesh-material mesh (:material config)))
       (set! (.-castShadow mesh) (:cast-shadow config))
       (set! (.-receiveShadow mesh) (:receive-shadow config))
       mesh))
   (destroy! [_ _ ^three/Mesh mesh _]
+    (node-material/release! mesh)
     (when-let [geo (.-geometry mesh)]
       (.dispose geo)))
   IUpdateableEntityType
   (update! [_ _ ^three/Mesh mesh config]
     (let [old-geo (.-geometry mesh)
           geo (geo-fn config)
-          mat (->material (:material config))]
+          mat (mesh-material mesh (:material config))]
       (when (and old-geo (not (identical? old-geo geo)))
         (.dispose old-geo))
       (set! (.-geometry mesh) geo)

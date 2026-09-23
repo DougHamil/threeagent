@@ -1,0 +1,17 @@
+{:lint-as {threeagent.tsl/defshader clojure.core/defn}
+ :hooks {:analyze-call {threeagent.tsl/shader-fn hooks.threeagent.tsl/shader-fn
+                        threeagent.tsl/defshader-fn hooks.threeagent.tsl/defshader-fn}}
+ ;; Shader code resolves TSL names (uv, position-local, let-var, +=, ...) and
+ ;; uses operators on vectors/nodes, which clj-kondo cannot know about.
+ :config-in-call {threeagent.tsl/shader {:linters {:unresolved-symbol {:level :off}
+                                                   :type-mismatch {:level :off}}}
+                  threeagent.tsl/defshader {:linters {:unresolved-symbol {:level :off}
+                                                      :type-mismatch {:level :off}}}
+                  threeagent.tsl/shader-fn {:linters {:unresolved-symbol {:level :off}
+                                                      :type-mismatch {:level :off}}}
+                  threeagent.tsl/defshader-fn {:linters {:unresolved-symbol {:level :off}
+                                                         :type-mismatch {:level :off}}}
+                  threeagent.tsl/compute {:linters {:unresolved-symbol {:level :off}
+                                                    :type-mismatch {:level :off}}}
+                  threeagent.tsl/defcompute {:linters {:unresolved-symbol {:level :off}
+                                                       :type-mismatch {:level :off}}}}}

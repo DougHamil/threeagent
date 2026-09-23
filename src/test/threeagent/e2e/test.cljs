@@ -6,4 +6,5 @@
             [threeagent.e2e.callback-test]
             [threeagent.e2e.portal-test]
             [threeagent.e2e.system-order-test]
-            [threeagent.e2e.multi-scene-test]))
+            [threeagent.e2e.multi-scene-test]
+            [threeagent.e2e.node-material-test]))
