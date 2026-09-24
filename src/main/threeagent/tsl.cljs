@@ -261,11 +261,23 @@
   [init]
   ($ "Var" init))
 
+(defn loop-bound
+  "A loop bound: nodes are stored in a variable, evaluated once before the
+   loop (as with dotimes); numbers pass through. TSL builds a Loop's bounds
+   without the analysis that records where nodes are used, so a node placed
+   on the statement stack when created, like an atomic, would be emitted as a
+   bare statement and the bound left empty: the loop would run 0 times."
+  [x]
+  (if (node? x) (var! x) x))
+
 (defn loop-range
   "A TSL Loop over `name` from `start` towards `end` by `step`. `body` gets the
-   loop index node."
+   loop index node. Node bounds are evaluated once, before the loop."
   [name start end step body]
-  (let [down? (and (number? step) (neg? step))
+  (let [start (loop-bound start)
+        end (loop-bound end)
+        step (loop-bound step)
+        down? (and (number? step) (neg? step))
         opts #js {:start start
                   :end end
                   :type "int"

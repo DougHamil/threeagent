@@ -40,7 +40,7 @@ Inside `shader`, `defshader`, `shader-fn`, `defshader-fn`, `compute` and `defcom
 | `(when test ...)` `(cond ...)` with statements | `If(...).ElseIf(...).Else(...)` |
 | `(let-var [acc 0] ...)` | `Var(0)`, a mutable variable |
 | `(set! x v)` `(+= x v)` `(-= x v)` `(*= x v)` `(%= x v)` | `assign` `addAssign` ... |
-| `(dotimes [i n] ...)` `(for-range [i start end step] ...)` `(while test ...)` | `Loop` |
+| `(dotimes [i n] ...)` `(for-range [i start end step] ...)` `(while test ...)` | `Loop`; `dotimes`/`for-range` bounds are evaluated once, before the loop |
 | `(break)` `(continue)` `(discard)` `(return)` | `Break` `Continue` `Discard` `Return` |
 
 Any other three/tsl export can be used by its JS name or its kebab-case name: `position-local`, `normal-world`, `mx-noise-float`, `instance-index`, `two-pi`.

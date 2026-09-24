@@ -75,6 +75,12 @@
                     acc))]
     (is (tsl/node? n))))
 
+(deftest loop-bounds
+  (testing "numbers pass through"
+    (is (= 5 (tsl/loop-bound 5))))
+  (testing "nodes are stored in a variable before the loop"
+    (is (true? (.-isVarNode ^js (tsl/loop-bound (t/uniform 3)))))))
+
 (deftest compute-nodes
   (let [buf (t/instancedArray 16 "float")
         c (compute {:count 16}
