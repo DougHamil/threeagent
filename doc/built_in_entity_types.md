@@ -142,11 +142,15 @@ Properties: `:color` `:intensity` `:cast-shadow` `:shadow`
 
 Corresponds to DirectionalLight
 
+Shines from its position toward its target (the origin by default). Without a `:position` it sits at `[0 1 0]`, straight up, as in Three.js.
+
 ### `:hemisphere-light`
 
 Properties: `:sky-color` `:ground-color` `:intensity`
 
 Corresponds to HemisphereLight
+
+Its sky direction is its position, normalized. Without a `:position` it sits at `[0 1 0]`, so the sky color comes from above, as in Three.js. Don't put it at the origin: the direction is then undefined, and every lit material renders black.
 
 ### `:rect-area-light`
 
@@ -159,6 +163,8 @@ Corresponds to RectAreaLight
 Properties: `:color` `:intensity` `:distance` `:angle` `:penumbra` `:decay` `:cast-shadow` `shadow`
 
 Corresponds to SpotLight
+
+Like `:directional-light`, it sits at `[0 1 0]` without a `:position`.
 
 ## Cameras
 

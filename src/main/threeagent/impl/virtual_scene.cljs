@@ -63,8 +63,18 @@
     (some? v) v
     :else default))
 
+;; Lights whose direction comes from their position (toward the origin, or
+;; their target) start above it, as Three.js places them. At the origin the
+;; direction is undefined, and under WebGPU the lighting turns NaN: every lit
+;; material renders black.
+(def ^:private default-positions
+  {:hemisphere-light [0 1 0]
+   :directional-light [0 1 0]
+   :spot-light [0 1 0]})
+
 (defn- node-data [comp-key comp-config]
-  {:position (normalize-vec3 (:position comp-config) [0 0 0])
+  {:position (normalize-vec3 (:position comp-config)
+                             (get default-positions comp-key [0 0 0]))
    :rotation (normalize-vec3 (:rotation comp-config) [0 0 0])
    :scale (normalize-vec3 (:scale comp-config) [1.0 1.0 1.0])
    :visible (:visible comp-config true)

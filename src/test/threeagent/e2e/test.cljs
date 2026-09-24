@@ -9,4 +9,5 @@
             [threeagent.e2e.multi-scene-test]
             [threeagent.e2e.node-material-test]
             [threeagent.e2e.mesh-update-test]
-            [threeagent.e2e.instances-test]))
+            [threeagent.e2e.instances-test]
+            [threeagent.e2e.light-default-position-test]))
