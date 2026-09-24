@@ -17,7 +17,7 @@
     config
     (material-cache config)))
 
-(def ^:private non-geometry-keys #{:material :cast-shadow :receive-shadow})
+(def ^:private non-geometry-keys #{:material :cast-shadow :receive-shadow :instances :frustum-culled})
 
 (defn- geometry-key
   "The part of a mesh config its geometry depends on: everything but the
@@ -41,6 +41,15 @@
     (do (node-material/release! mesh)
         (->material config))))
 
+(defn- apply-instances!
+  "`:instances n` draws the mesh n times, for shaders that place each instance
+   themselves (instance-index). Its geometry's bounds then say nothing about
+   where the instances are, so frustum culling is off unless :frustum-culled
+   says otherwise."
+  [^three/Mesh mesh {:keys [instances]}]
+  (set! (.-count mesh) (or instances 1))
+  (set! (.-frustumCulled mesh) (nil? instances)))
+
 (deftype MeshEntity [geo-fn]
   IEntityType
   (create [_ _ config]
@@ -48,6 +57,7 @@
           mesh (three/Mesh. geo)]
       (.set geometry-keys mesh (geometry-key config))
       (set! (.-material mesh) (mesh-material mesh (:material config)))
+      (apply-instances! mesh config)
       (set! (.-castShadow mesh) (:cast-shadow config))
       (set! (.-receiveShadow mesh) (:receive-shadow config))
       mesh))
@@ -71,6 +81,7 @@
         (.dispose old-geo))
       (set! (.-geometry mesh) geo)
       (set! (.-material mesh) mat)
+      (apply-instances! mesh config)
       (set! (.-castShadow mesh) (:cast-shadow config))
       (set! (.-receiveShadow mesh) (:receive-shadow config))
       mesh)))

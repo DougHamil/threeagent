@@ -105,6 +105,7 @@
                 visible]} (.-data node)]
     (if-let [entity-type (get (.-entityTypes ctx) component-key)]
       (let [obj (entity/create entity-type (.-context node) component-config)]
+        (threejs/apply-object-props! obj component-config)
         (threejs/set-position! obj position)
         (threejs/set-rotation! obj rotation)
         (threejs/set-scale! obj scale)
@@ -196,7 +197,8 @@
                       (get (.-entityTypes ctx) component-key))
         obj  ^three/Object3D (.-threejs node)]
     (when entity-type
-      (entity/update! entity-type (.-context node) obj component-config))
+      (entity/update! entity-type (.-context node) obj component-config)
+      (threejs/apply-object-props! obj component-config))
     (if portal?
       (do
         (when position (threejs/set-position! obj position))
