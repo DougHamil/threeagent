@@ -8,4 +8,5 @@
             [threeagent.e2e.system-order-test]
             [threeagent.e2e.multi-scene-test]
             [threeagent.e2e.node-material-test]
-            [threeagent.e2e.mesh-update-test]))
+            [threeagent.e2e.mesh-update-test]
+            [threeagent.e2e.light-default-position-test]))
