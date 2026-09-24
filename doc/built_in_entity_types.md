@@ -3,6 +3,8 @@ Threeagent provides a number of entity-types out-of-the-box, allowing you to qui
 
 ## Common
 
+Every entity also takes `:visible` and `:frustum-culled`. `:frustum-culled false` stops Three.js skipping the object when its bounds are off screen, for objects a shader moves or draws beyond their geometry's bounds.
+
 ### `:object`
 
 Properties: `:position` `:rotation` `:scale`
@@ -24,6 +26,15 @@ Where `:object` is a valid THREE.js object instance (Mesh, Camera, Group, etc).
 The value `:object` will be directly injected into the scene graph at this component's location.
 
 ## Geometry
+
+Every geometry type also takes `:instances n`, which draws the mesh `n` times in one draw call. It's meant for [node material](shaders.md) shaders that place each instance themselves from `instance-index`, for example reading a storage buffer a compute shader fills:
+
+```clojure
+[:box {:instances particle-count
+       :material {:shader particle}}]   ; particle reads (nth positions instance-index)
+```
+
+Its geometry's bounds say nothing about where those instances end up, so frustum culling is off for instanced meshes unless `:frustum-culled` says otherwise.
 
 ### `:box`
 

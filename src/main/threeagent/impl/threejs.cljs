@@ -32,6 +32,14 @@
   (set! (.-receiveShadow obj) ?true)
   obj)
   
+(defn apply-object-props!
+  "Config keys that apply to any entity's object. Runs after the entity type
+   has created or updated it, so an explicit value wins over its defaults."
+  [^js obj config]
+  (when (contains? config :frustum-culled)
+    (set! (.-frustumCulled obj) (boolean (:frustum-culled config))))
+  obj)
+
 (defn add-child! [^js parent ^js child] (.add parent child))
 
 (defn remove-child! [^js parent ^js child] (.remove parent child))

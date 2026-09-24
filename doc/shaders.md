@@ -113,6 +113,15 @@ They are ordinary Clojure functions wrapping a TSL `Fn`, so calling them never r
 (.compute renderer integrate)
 ```
 
+To draw one thing per element, give a mesh `:instances` and read the buffers by `instance-index` in its material's shader:
+
+```clojure
+(defshader particle [_]
+  {:position (+ (nth positions instance-index) position-local)})
+
+[:sphere {:radius 0.05 :instances particle-count :material {:shader particle}}]
+```
+
 ## Node materials
 
 A `:material` map with a `:shader` key is a node material:
